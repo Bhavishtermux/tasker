@@ -12,7 +12,7 @@ import { useAppTheme } from '../../src/context/ThemeContext';
 import { useTasks } from '../../src/context/TaskContext';
 import { StreakCard } from '../../src/components/StreakCard';
 import { ProgressChart } from '../../src/components/ProgressChart';
-import { FloatingBottomNav } from '../../src/components/FloatingBottomNav';
+import { BottomNavBar, TabName } from '../../src/components/BottomNavBar';
 
 export default function ProgressScreen() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function ProgressScreen() {
     setIsRefreshing(false);
   };
 
-  const handleSelectTab = (tab: 'tasks' | 'progress' | 'settings') => {
+  const handleSelectTab = (tab: TabName) => {
     if (tab === 'tasks') {
       router.push('/(tabs)');
     } else if (tab === 'settings') {
@@ -40,7 +40,10 @@ export default function ProgressScreen() {
       edges={['top']}
     >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>progress</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Progress</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Consistency and completion metrics
+        </Text>
       </View>
 
       <ScrollView
@@ -50,29 +53,26 @@ export default function ProgressScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={[colors.text]}
-            tintColor={colors.text}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
         }
       >
-        {/* Streak & Overall Stats */}
+        {/* Streak & Milestone Cards */}
         <StreakCard
           currentStreak={metrics.currentStreak}
           bestStreak={metrics.bestStreak}
           totalCompleted={metrics.totalCompletedTasks}
         />
 
-        {/* Charts & Metrics */}
+        {/* Animated Progress Charts */}
         <ProgressChart metrics={metrics} />
       </ScrollView>
 
-      {/* Floating Bottom Navigation Island */}
-      <FloatingBottomNav
+      {/* Floating 3-Tab Bottom Navigation Bar */}
+      <BottomNavBar
         currentTab="progress"
-        isSearchActive={false}
         onSelectTab={handleSelectTab}
-        onToggleSearch={() => router.push('/(tabs)')}
-        onPressAdd={() => router.push('/task/create')}
       />
     </SafeAreaView>
   );
@@ -84,16 +84,21 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 4,
+    paddingTop: 12,
+    paddingBottom: 6,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
-    letterSpacing: -1,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 13.5,
+    fontWeight: '500',
+    marginTop: 2,
   },
   scrollContent: {
-    paddingBottom: 110,
+    paddingBottom: 100,
     gap: 12,
   },
 });

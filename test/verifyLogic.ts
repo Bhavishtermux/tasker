@@ -1,7 +1,6 @@
 import {
   getTaskSection,
   groupTasksIntoSections,
-  groupTasksForDate,
   filterTasksBySearch,
   generateNextOccurrence,
   calculateNextDueDate,
@@ -12,8 +11,6 @@ import {
   getTodayDateString,
   getTomorrowDateString,
   addDays,
-  getWeekDaysForDate,
-  getTimeOfDayFromTime,
 } from '../src/utils/dateUtils';
 import { Task } from '../src/types/task';
 
@@ -26,74 +23,78 @@ function assert(condition: boolean, message: string) {
 
 console.log('\n--- Running Unit Verification Tests ---');
 
-// 1. Test Date Section Categorization & Time-of-Day Grouping
-console.log('\n1. Testing Time-of-Day Grouping (Morning, Afternoon, Evening, Completed):');
+// 1. Test Date Section Categorization
+console.log('\n1. Testing Date Section Categorization (Overdue, Today, Tomorrow, Upcoming, Completed):');
 const todayStr = getTodayDateString();
+const tomorrowStr = getTomorrowDateString();
+const overdueDate = addDays(todayStr, -2);
+const futureDate = addDays(todayStr, 5);
 
-const morningTask: Task = {
-  id: 'm1',
-  title: 'design user registration process',
-  category: 'coinbase',
+const baseTask: Task = {
+  id: 't1',
+  title: 'Buy groceries',
   dueDate: todayStr,
-  dueTime: '09:30',
-  timeOfDay: 'morning',
-  estimatedMinutes: 50,
   isAllDay: false,
+  dueTime: '18:00',
+  priority: 'normal',
   reminder: { preset: 'none', offsetMinutes: 0 },
   repeat: { type: 'none' },
-  priority: 'normal',
   subtasks: [],
   isCompleted: false,
   createdAt: new Date().toISOString(),
 };
 
-const afternoonTask: Task = {
-  id: 'a1',
-  title: 'finalize color palette and typography',
-  category: 'apple',
-  dueDate: todayStr,
-  dueTime: '14:00',
-  timeOfDay: 'afternoon',
-  estimatedMinutes: 25,
-  isAllDay: false,
-  reminder: { preset: 'none', offsetMinutes: 0 },
-  repeat: { type: 'none' },
-  priority: 'normal',
-  subtasks: [],
-  isCompleted: false,
-  createdAt: new Date().toISOString(),
-};
-
-const completedTodayTask: Task = {
-  ...morningTask,
-  id: 'c1',
+const overdueTask: Task = { ...baseTask, id: 'overdue-1', title: 'Overdue task', dueDate: overdueDate };
+const todayTask: Task = { ...baseTask, id: 'today-1', title: 'Today task', dueDate: todayStr };
+const tomorrowTask: Task = { ...baseTask, id: 'tomorrow-1', title: 'Tomorrow task', dueDate: tomorrowStr };
+const upcomingTask: Task = { ...baseTask, id: 'upcoming-1', title: 'Upcoming task', dueDate: futureDate };
+const completedTask: Task = {
+  ...baseTask,
+  id: 'comp-1',
+  title: 'Completed task',
+  dueDate: overdueDate,
   isCompleted: true,
   completedAt: new Date().toISOString(),
 };
 
-const dateSections = groupTasksForDate([morningTask, afternoonTask, completedTodayTask], todayStr);
-assert(dateSections.length === 3, 'Date sections contains Morning, Afternoon, Completed');
-assert(dateSections[0].type === 'morning', 'First section is Morning');
-assert(dateSections[1].type === 'afternoon', 'Second section is Afternoon');
-assert(dateSections[2].type === 'completed', 'Third section is Completed');
+assert(getTaskSection(overdueTask) === 'overdue', 'Overdue task categorized into overdue');
+assert(getTaskSection(todayTask) === 'today', 'Today task categorized into today');
+assert(getTaskSection(tomorrowTask) === 'tomorrow', 'Tomorrow task categorized into tomorrow');
+assert(getTaskSection(upcomingTask) === 'upcoming', 'Future task categorized into upcoming');
+assert(getTaskSection(completedTask) === 'completed', 'Completed task categorized into completed');
 
-// 2. Test Week Calendar Strip
-console.log('\n2. Testing Week Calendar Strip:');
-const weekDays = getWeekDaysForDate(todayStr);
-assert(weekDays.length === 7, 'Week days generator returns 7 days');
-assert(weekDays[0].dayName === 'Mon', 'Week starts with Monday');
-assert(weekDays[6].dayName === 'Sun', 'Week ends with Sunday');
-const todayInWeek = weekDays.find((d) => d.isToday);
-assert(todayInWeek !== undefined, 'Current day is marked as isToday');
+const allTasks = [overdueTask, todayTask, tomorrowTask, upcomingTask, completedTask];
+const sections = groupTasksIntoSections(allTasks);
+assert(sections.length === 5, 'All 5 non-empty sections rendered');
+assert(sections[0].type === 'overdue', 'First section is Overdue');
+assert(sections[1].type === 'today', 'Second section is Today');
+assert(sections[2].type === 'tomorrow', 'Third section is Tomorrow');
+assert(sections[3].type === 'upcoming', 'Fourth section is Upcoming');
+assert(sections[4].type === 'completed', 'Fifth section is Completed');
+
+// 2. Test Search Filtering
+console.log('\n2. Testing Search Filtering:');
+const taskA: Task = { ...baseTask, id: 'a', title: 'Buy Groceries', notes: 'Milk and eggs' };
+const taskB: Task = { ...baseTask, id: 'b', title: 'Finish assignment', notes: 'Review final draft' };
+const taskC: Task = { ...baseTask, id: 'c', title: 'Call Mom', subtasks: [{ id: 's1', title: 'Ask about weekend', isCompleted: false }] };
+
+const searchTitle = filterTasksBySearch([taskA, taskB, taskC], 'groceries');
+assert(searchTitle.length === 1 && searchTitle[0].id === 'a', 'Search finds task by title');
+
+const searchNotes = filterTasksBySearch([taskA, taskB, taskC], 'draft');
+assert(searchNotes.length === 1 && searchNotes[0].id === 'b', 'Search finds task by notes');
+
+const searchSubtask = filterTasksBySearch([taskA, taskB, taskC], 'weekend');
+assert(searchSubtask.length === 1 && searchSubtask[0].id === 'c', 'Search finds task by subtask title');
 
 // 3. Test Recurring Tasks
 console.log('\n3. Testing Recurring Task Occurrence Generation:');
 const dailyRecurring: Task = {
-  ...morningTask,
+  ...baseTask,
   id: 'recur-daily',
   dueDate: '2026-09-01',
   repeat: { type: 'daily', interval: 1 },
-  subtasks: [{ id: 'sub-1', title: 'Sub 1', isCompleted: true }],
+  subtasks: [{ id: 'sub-1', title: 'Milk', isCompleted: true }],
 };
 
 const nextDaily = generateNextOccurrence(dailyRecurring);
@@ -102,19 +103,39 @@ assert(nextDaily?.dueDate === '2026-09-02', 'Next daily occurrence is scheduled 
 assert(nextDaily?.isCompleted === false, 'Next occurrence is active/incomplete');
 assert(nextDaily?.subtasks[0].isCompleted === false, 'Next occurrence resets subtask completion status');
 
-// 4. Test Search Filtering
-console.log('\n4. Testing Search Filtering:');
-const searchTag = filterTasksBySearch([morningTask, afternoonTask], 'coinbase');
-assert(searchTag.length === 1 && searchTag[0].category === 'coinbase', 'Search filters by @category');
+// 4. Test Progress Metrics & Streak Calculation
+console.log('\n4. Testing Progress Metrics & Streak Calculation:');
+const completedToday: Task = {
+  ...baseTask,
+  id: 'c-today',
+  dueDate: todayStr,
+  isCompleted: true,
+  completedAt: new Date().toISOString(),
+  createdAt: new Date().toISOString(),
+};
 
-const searchTitle = filterTasksBySearch([morningTask, afternoonTask], 'registration');
-assert(searchTitle.length === 1 && searchTitle[0].id === 'm1', 'Search filters by title text');
+const completedYesterday: Task = {
+  ...baseTask,
+  id: 'c-yesterday',
+  dueDate: addDays(todayStr, -1),
+  isCompleted: true,
+  completedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+  createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+};
 
-// 5. Test Progress & Streak Calculation
-console.log('\n5. Testing Progress & Streaks:');
-const metrics = calculateProgressMetrics([morningTask, afternoonTask, completedTodayTask]);
+const activeToday: Task = {
+  ...baseTask,
+  id: 'a-today',
+  dueDate: todayStr,
+  isCompleted: false,
+  createdAt: new Date().toISOString(),
+};
+
+const metrics = calculateProgressMetrics([completedToday, completedYesterday, activeToday]);
 assert(metrics.tasksCompletedToday === 1, 'Tasks completed today is 1');
-assert(metrics.totalCompletedTasks === 1, 'Total completed tasks is 1');
+assert(metrics.totalCompletedTasks === 2, 'Total completed tasks all time is 2');
+assert(metrics.currentStreak >= 2, 'Current streak calculates consecutive days');
+assert(metrics.bestStreak >= 2, 'Best streak matches or exceeds current streak');
 assert(metrics.weeklyDays.length === 7, 'Weekly breakdown contains 7 days');
 
-console.log('\nAll updated UI & logic unit tests passed successfully!\n');
+console.log('\nAll unit tests passed successfully!\n');

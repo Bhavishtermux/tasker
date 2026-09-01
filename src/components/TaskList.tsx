@@ -36,30 +36,25 @@ export const TaskList: React.FC<TaskListProps> = ({
   }: {
     section: TaskSectionData;
   }) => {
-    const getHeaderDetails = () => {
+    const isOverdue = section.type === 'overdue';
+    const isCompleted = section.type === 'completed';
+
+    const getHeaderIcon = () => {
       switch (section.type) {
-        case 'morning':
-          return { icon: 'weather-sunset-up', label: 'Morning' };
-        case 'afternoon':
-          return { icon: 'white-balance-sunny', label: 'Afternoon' };
-        case 'evening':
-          return { icon: 'weather-night', label: 'Evening' };
         case 'overdue':
-          return { icon: 'alert-circle-outline', label: 'Overdue' };
+          return 'alert-circle-outline';
         case 'today':
-          return { icon: 'calendar-today', label: 'Today' };
+          return 'calendar-today';
         case 'tomorrow':
-          return { icon: 'calendar-arrow-right', label: 'Tomorrow' };
+          return 'calendar-arrow-right';
         case 'upcoming':
-          return { icon: 'calendar-clock', label: 'Upcoming' };
+          return 'calendar-clock';
         case 'completed':
-          return { icon: 'check-all', label: 'Completed' };
+          return 'check-all';
         default:
-          return { icon: 'format-list-bulleted', label: section.title };
+          return 'calendar';
       }
     };
-
-    const header = getHeaderDetails();
 
     return (
       <View
@@ -70,18 +65,51 @@ export const TaskList: React.FC<TaskListProps> = ({
       >
         <View style={styles.sectionTitleRow}>
           <MaterialCommunityIcons
-            name={header.icon as any}
+            name={getHeaderIcon()}
             size={14}
-            color={colors.textSecondary}
+            color={
+              isOverdue
+                ? colors.danger
+                : isCompleted
+                ? colors.success
+                : colors.primary
+            }
           />
           <Text
             style={[
               styles.sectionTitle,
-              { color: colors.textSecondary },
+              {
+                color: isOverdue
+                  ? colors.danger
+                  : isCompleted
+                  ? colors.textSecondary
+                  : colors.text,
+              },
             ]}
           >
-            {header.label}
+            {section.title}
           </Text>
+          <View
+            style={[
+              styles.countBadge,
+              {
+                backgroundColor: isOverdue
+                  ? colors.importantBadge
+                  : colors.surfaceVariant,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.countText,
+                {
+                  color: isOverdue ? colors.danger : colors.textSecondary,
+                },
+              ]}
+            >
+              {section.data.length}
+            </Text>
+          </View>
         </View>
       </View>
     );
@@ -109,8 +137,8 @@ export const TaskList: React.FC<TaskListProps> = ({
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            colors={[colors.text]}
-            tintColor={colors.text}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
         ) : undefined
       }
@@ -120,7 +148,7 @@ export const TaskList: React.FC<TaskListProps> = ({
 
 const styles = StyleSheet.create({
   listContent: {
-    paddingBottom: 96,
+    paddingBottom: 100,
     paddingTop: 4,
   },
   sectionHeaderContainer: {
@@ -131,11 +159,20 @@ const styles = StyleSheet.create({
   sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     letterSpacing: 0.1,
+  },
+  countBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  countText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

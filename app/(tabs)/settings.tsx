@@ -16,14 +16,14 @@ import { useAppTheme } from '../../src/context/ThemeContext';
 import { useSettings } from '../../src/context/SettingsContext';
 import { useTasks } from '../../src/context/TaskContext';
 import { ConfirmationModal } from '../../src/components/ConfirmationModal';
-import { FloatingBottomNav } from '../../src/components/FloatingBottomNav';
+import { BottomNavBar, TabName } from '../../src/components/BottomNavBar';
 import { AppTheme } from '../../src/types/settings';
-import { ReminderPreset } from '../../src/types/task';
+import { Priority, ReminderPreset } from '../../src/types/task';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { colors, themeMode, setThemeMode } = useAppTheme();
-  const { settings, updateSettings, categories } = useSettings();
+  const { settings, updateSettings } = useSettings();
   const { tasks, clearCompletedTasks, wipeAllData } = useTasks();
 
   const [confirmClearVisible, setConfirmClearVisible] = useState(false);
@@ -68,7 +68,7 @@ export default function SettingsScreen() {
     Alert.alert('Success', 'All task data has been reset.');
   };
 
-  const handleSelectTab = (tab: 'tasks' | 'progress' | 'settings') => {
+  const handleSelectTab = (tab: TabName) => {
     if (tab === 'tasks') {
       router.push('/(tabs)');
     } else if (tab === 'progress') {
@@ -82,7 +82,10 @@ export default function SettingsScreen() {
       edges={['top']}
     >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>settings</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Preferences and task defaults
+        </Text>
       </View>
 
       <ScrollView
@@ -113,7 +116,7 @@ export default function SettingsScreen() {
                           ? colors.primaryLight
                           : colors.surfaceVariant,
                         borderColor: isSelected
-                          ? colors.border
+                          ? colors.primary
                           : 'transparent',
                       },
                     ]}
@@ -123,13 +126,13 @@ export default function SettingsScreen() {
                     <MaterialCommunityIcons
                       name={opt.icon as any}
                       size={18}
-                      color={isSelected ? colors.text : colors.textSecondary}
+                      color={isSelected ? colors.primary : colors.textSecondary}
                     />
                     <Text
                       style={[
                         styles.themeOptionText,
                         {
-                          color: isSelected ? colors.text : colors.textSecondary,
+                          color: isSelected ? colors.primary : colors.textSecondary,
                           fontWeight: isSelected ? '700' : '500',
                         },
                       ]}
@@ -158,12 +161,12 @@ export default function SettingsScreen() {
               <View style={styles.settingInfo}>
                 <MaterialCommunityIcons
                   name="bell-outline"
-                  size={18}
-                  color={colors.text}
+                  size={19}
+                  color={colors.primary}
                 />
                 <View>
                   <Text style={[styles.settingLabel, { color: colors.text }]}>
-                    Task Reminders
+                    Enable notifications
                   </Text>
                   <Text
                     style={[
@@ -171,7 +174,7 @@ export default function SettingsScreen() {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    Receive local alarms before due time
+                    Receive alarms at reminder times
                   </Text>
                 </View>
               </View>
@@ -186,7 +189,7 @@ export default function SettingsScreen() {
                 }}
                 thumbColor={
                   settings.notificationsEnabled
-                    ? colors.text
+                    ? colors.primary
                     : colors.textMuted
                 }
               />
@@ -223,7 +226,7 @@ export default function SettingsScreen() {
                             ? colors.primaryLight
                             : colors.surfaceVariant,
                           borderColor: isSelected
-                            ? colors.border
+                            ? colors.primary
                             : 'transparent',
                         },
                       ]}
@@ -236,8 +239,8 @@ export default function SettingsScreen() {
                         style={[
                           styles.chipText,
                           {
-                            color: isSelected ? colors.text : colors.textSecondary,
-                            fontWeight: isSelected ? '600' : '400',
+                            color: isSelected ? colors.primary : colors.textSecondary,
+                            fontWeight: isSelected ? '700' : '500',
                           },
                         ]}
                       >
@@ -251,10 +254,10 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* SECTION: Tags & Lists */}
+        {/* SECTION: Defaults */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            Default Tag
+            Task Defaults
           </Text>
           <View
             style={[
@@ -262,54 +265,87 @@ export default function SettingsScreen() {
               { backgroundColor: colors.card, borderColor: colors.cardBorder },
             ]}
           >
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalChips}
-            >
-              {categories.map((cat) => {
-                const isSelected =
-                  settings.defaultCategory.toLowerCase() ===
-                  cat.name.toLowerCase();
-                return (
-                  <TouchableOpacity
-                    key={cat.id}
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <MaterialCommunityIcons
+                  name="star-outline"
+                  size={19}
+                  color={colors.warning}
+                />
+                <View>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    Default priority
+                  </Text>
+                  <Text
                     style={[
-                      styles.chip,
+                      styles.settingSubLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Priority for newly created tasks
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.priorityToggleTrack}>
+                <TouchableOpacity
+                  style={[
+                    styles.miniToggle,
+                    settings.defaultPriority === 'normal' && {
+                      backgroundColor: colors.primary,
+                    },
+                  ]}
+                  onPress={() => updateSettings({ defaultPriority: 'normal' })}
+                >
+                  <Text
+                    style={[
+                      styles.miniToggleText,
                       {
-                        backgroundColor: isSelected
-                          ? colors.primaryLight
-                          : colors.surfaceVariant,
-                        borderColor: isSelected
-                          ? colors.border
-                          : 'transparent',
+                        color:
+                          settings.defaultPriority === 'normal'
+                            ? colors.checkboxCheck
+                            : colors.textSecondary,
                       },
                     ]}
-                    onPress={() => updateSettings({ defaultCategory: cat.name })}
-                    activeOpacity={0.7}
                   >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        {
-                          color: isSelected ? colors.text : colors.textSecondary,
-                          fontWeight: isSelected ? '600' : '400',
-                        },
-                      ]}
-                    >
-                      @{cat.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+                    Normal
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.miniToggle,
+                    settings.defaultPriority === 'important' && {
+                      backgroundColor: colors.danger,
+                    },
+                  ]}
+                  onPress={() =>
+                    updateSettings({ defaultPriority: 'important' })
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.miniToggleText,
+                      {
+                        color:
+                          settings.defaultPriority === 'important'
+                            ? '#FFFFFF'
+                            : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    Important
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
 
         {/* SECTION: Data Management */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            Data
+            Data Management
           </Text>
           <View
             style={[
@@ -326,7 +362,7 @@ export default function SettingsScreen() {
                 <MaterialCommunityIcons
                   name="export-variant"
                   size={18}
-                  color={colors.text}
+                  color={colors.primary}
                 />
                 <Text style={[styles.actionLabel, { color: colors.text }]}>
                   Export tasks (JSON)
@@ -406,23 +442,31 @@ export default function SettingsScreen() {
           >
             <View style={styles.aboutRow}>
               <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>
+                App Name
+              </Text>
+              <Text style={[styles.aboutValue, { color: colors.text }]}>
+                Daily Tasks
+              </Text>
+            </View>
+            <View
+              style={[styles.cardDivider, { backgroundColor: colors.divider }]}
+            />
+            <View style={styles.aboutRow}>
+              <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>
                 Version
               </Text>
               <Text style={[styles.aboutValue, { color: colors.text }]}>
-                1.0.0 (Offline Android)
+                1.0.0
               </Text>
             </View>
           </View>
         </View>
       </ScrollView>
 
-      {/* Floating Bottom Navigation Island */}
-      <FloatingBottomNav
+      {/* Floating 3-Tab Bottom Navigation Bar */}
+      <BottomNavBar
         currentTab="settings"
-        isSearchActive={false}
         onSelectTab={handleSelectTab}
-        onToggleSearch={() => router.push('/(tabs)')}
-        onPressAdd={() => router.push('/task/create')}
       />
 
       {/* Confirmation Modals */}
@@ -439,7 +483,7 @@ export default function SettingsScreen() {
       <ConfirmationModal
         visible={confirmWipeVisible}
         title="Delete All Data?"
-        message="This action will permanently remove all tasks and streaks."
+        message="This action will permanently remove all tasks and streak history."
         confirmLabel="Delete Everything"
         isDestructive={true}
         onConfirm={handleWipeData}
@@ -455,16 +499,21 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 4,
+    paddingTop: 12,
+    paddingBottom: 6,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
-    letterSpacing: -1,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 13.5,
+    fontWeight: '500',
+    marginTop: 2,
   },
   scrollContent: {
-    paddingBottom: 110,
+    paddingBottom: 100,
     paddingHorizontal: 16,
     gap: 16,
   },
@@ -536,14 +585,28 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
   },
   chipText: {
     fontSize: 12.5,
+  },
+  priorityToggleTrack: {
+    flexDirection: 'row',
+    backgroundColor: '#00000030',
+    borderRadius: 8,
+    padding: 2,
+  },
+  miniToggle: {
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  miniToggleText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   actionRow: {
     flexDirection: 'row',

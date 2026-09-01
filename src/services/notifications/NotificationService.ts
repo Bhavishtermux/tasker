@@ -1,9 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Task } from '../../types/task';
-import { parseDateString } from '../../utils/dateUtils';
+import { parseDateString, formatTime12Hour } from '../../utils/dateUtils';
 
-// Configure notification behavior
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -25,7 +24,7 @@ export class NotificationService {
         name: 'Task Reminders',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#1A73E8',
+        lightColor: '#38BDF8',
         sound: 'default',
         enableVibrate: true,
         showBadge: true,
@@ -59,10 +58,6 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Schedule a notification for a task if reminder is configured.
-   * Returns notification ID or undefined.
-   */
   static async scheduleTaskReminder(task: Task, notificationsEnabled: boolean): Promise<string | undefined> {
     if (!notificationsEnabled || !task.reminder || task.reminder.preset === 'none' || task.isCompleted) {
       return undefined;
@@ -73,23 +68,26 @@ export class NotificationService {
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) return undefined;
 
-      // Cancel any existing notification for this task
       if (task.reminder.notificationId) {
         await this.cancelNotification(task.reminder.notificationId);
       }
 
-      // Calculate notification target trigger date
       const triggerDate = this.calculateTriggerDate(task);
       if (!triggerDate || triggerDate.getTime() <= Date.now()) {
-        // Target date is in the past
         return undefined;
       }
 
       const priorityLabel = task.priority === 'important' ? '⭐ ' : '';
+      const bodyText = task.notes
+        ? task.notes
+        : task.isAllDay
+        ? 'Due today'
+        : `Due at ${formatTime12Hour(task.dueTime)}`;
+
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: `${priorityLabel}${task.title}`,
-          body: task.notes ? task.notes : `Due ${task.isAllDay ? 'today' : task.dueTime || 'today'} (${task.category})`,
+          body: bodyText,
           data: { taskId: task.id },
           sound: 'default',
         },
@@ -120,7 +118,6 @@ export class NotificationService {
     const baseDate = parseDateString(task.dueDate);
 
     if (task.isAllDay || !task.dueTime) {
-      // Default all-day reminder time to 9:00 AM on the due date
       baseDate.setHours(9, 0, 0, 0);
     } else {
       const [h, m] = task.dueTime.split(':').map((n) => parseInt(n, 10));

@@ -5,8 +5,10 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Subtask } from '../types/task';
 import { useAppTheme } from '../context/ThemeContext';
 
@@ -15,8 +17,106 @@ interface SubtaskListProps {
   onAddSubtask: (title: string) => void;
   onToggleSubtask: (id: string) => void;
   onDeleteSubtask: (id: string) => void;
-  onEditSubtask?: (id: string, newTitle: string) => void;
 }
+
+const SubtaskRow: React.FC<{
+  subtask: Subtask;
+  onToggle: () => void;
+  onDelete: () => void;
+}> = ({ subtask, onToggle, onDelete }) => {
+  const { colors } = useAppTheme();
+  const [scale] = useState(new Animated.Value(1));
+
+  const handleToggle = () => {
+    try {
+      Haptics.selectionAsync();
+    } catch {
+      // ignore
+    }
+
+    Animated.sequence([
+      Animated.timing(scale, {
+        toValue: 0.85,
+        duration: 70,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 4,
+        tension: 80,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    onToggle();
+  };
+
+  return (
+    <View
+      style={[
+        styles.subtaskItem,
+        {
+          backgroundColor: colors.surfaceVariant,
+          borderColor: colors.cardBorder,
+        },
+      ]}
+    >
+      <TouchableOpacity
+        style={styles.checkTouch}
+        onPress={handleToggle}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        activeOpacity={0.7}
+      >
+        <Animated.View
+          style={[
+            styles.checkboxCircle,
+            {
+              borderColor: subtask.isCompleted
+                ? colors.primary
+                : colors.checkboxBorder,
+              backgroundColor: subtask.isCompleted
+                ? colors.primary
+                : 'transparent',
+              transform: [{ scale }],
+            },
+          ]}
+        >
+          {subtask.isCompleted && (
+            <MaterialCommunityIcons
+              name="check"
+              size={12}
+              color={colors.checkboxCheck}
+            />
+          )}
+        </Animated.View>
+      </TouchableOpacity>
+
+      <Text
+        style={[
+          styles.subtaskTitle,
+          {
+            color: subtask.isCompleted ? colors.textMuted : colors.text,
+            textDecorationLine: subtask.isCompleted ? 'line-through' : 'none',
+          },
+        ]}
+      >
+        {subtask.title}
+      </Text>
+
+      <TouchableOpacity
+        style={styles.deleteTouch}
+        onPress={onDelete}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <MaterialCommunityIcons
+          name="close"
+          size={16}
+          color={colors.textSecondary}
+        />
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 export const SubtaskList: React.FC<SubtaskListProps> = ({
   subtasks,
@@ -27,66 +127,57 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
   const { colors } = useAppTheme();
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
+  const completedCount = subtasks.filter((s) => s.isCompleted).length;
+
   const handleAdd = () => {
     if (!newSubtaskTitle.trim()) return;
+    try {
+      Haptics.selectionAsync();
+    } catch {
+      // ignore
+    }
     onAddSubtask(newSubtaskTitle.trim());
     setNewSubtaskTitle('');
   };
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.label, { color: colors.textSecondary }]}>
-        Subtasks {subtasks.length > 0 && `(${subtasks.length})`}
-      </Text>
-
-      {/* Existing subtasks */}
-      {subtasks.map((st) => (
-        <View
-          key={st.id}
-          style={[
-            styles.subtaskItem,
-            {
-              backgroundColor: colors.surfaceVariant,
-              borderColor: colors.border,
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.checkTouch}
-            onPress={() => onToggleSubtask(st.id)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialCommunityIcons
-              name={st.isCompleted ? 'checkbox-marked' : 'checkbox-blank-outline'}
-              size={20}
-              color={st.isCompleted ? colors.success : colors.textSecondary}
-            />
-          </TouchableOpacity>
-
-          <Text
+      <View style={styles.headerRow}>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>
+          Subtasks
+        </Text>
+        {subtasks.length > 0 && (
+          <View
             style={[
-              styles.subtaskTitle,
-              {
-                color: st.isCompleted ? colors.textMuted : colors.text,
-                textDecorationLine: st.isCompleted ? 'line-through' : 'none',
-              },
+              styles.counterBadge,
+              { backgroundColor: colors.surfaceVariant },
             ]}
           >
-            {st.title}
-          </Text>
+            <Text
+              style={[
+                styles.counterText,
+                {
+                  color:
+                    completedCount === subtasks.length
+                      ? colors.success
+                      : colors.textSecondary,
+                },
+              ]}
+            >
+              {completedCount}/{subtasks.length}
+            </Text>
+          </View>
+        )}
+      </View>
 
-          <TouchableOpacity
-            style={styles.deleteTouch}
-            onPress={() => onDeleteSubtask(st.id)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialCommunityIcons
-              name="close"
-              size={18}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-        </View>
+      {/* Subtask list */}
+      {subtasks.map((st) => (
+        <SubtaskRow
+          key={st.id}
+          subtask={st}
+          onToggle={() => onToggleSubtask(st.id)}
+          onDelete={() => onDeleteSubtask(st.id)}
+        />
       ))}
 
       {/* Add Subtask Input */}
@@ -95,19 +186,19 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
           styles.inputContainer,
           {
             backgroundColor: colors.surfaceVariant,
-            borderColor: colors.border,
+            borderColor: colors.cardBorder,
           },
         ]}
       >
         <MaterialCommunityIcons
           name="plus"
-          size={20}
+          size={18}
           color={colors.textSecondary}
           style={styles.plusIcon}
         />
         <TextInput
           style={[styles.input, { color: colors.text }]}
-          placeholder="Add a subtask..."
+          placeholder="Add subtask..."
           placeholderTextColor={colors.textMuted}
           value={newSubtaskTitle}
           onChangeText={setNewSubtaskTitle}
@@ -118,8 +209,13 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
           <TouchableOpacity
             style={[styles.addButton, { backgroundColor: colors.primary }]}
             onPress={handleAdd}
+            activeOpacity={0.8}
           >
-            <MaterialCommunityIcons name="arrow-up" size={16} color="#FFFFFF" />
+            <MaterialCommunityIcons
+              name="arrow-up"
+              size={14}
+              color={colors.checkboxCheck}
+            />
           </TouchableOpacity>
         )}
       </View>
@@ -129,30 +225,52 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 6,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
   label: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  counterBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  counterText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   subtaskItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginBottom: 6,
+    paddingVertical: 9,
+    borderRadius: 10,
+    marginBottom: 5,
     borderWidth: 1,
   },
   checkTouch: {
     marginRight: 10,
   },
+  checkboxCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   subtaskTitle: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13.5,
   },
   deleteTouch: {
     padding: 2,
@@ -160,9 +278,9 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    height: 44,
+    height: 42,
     borderWidth: 1,
     borderStyle: 'dashed',
     marginTop: 4,
@@ -172,13 +290,13 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13.5,
     paddingVertical: 0,
   },
   addButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },

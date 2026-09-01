@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useRef, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Priority } from '../types/task';
 import { useAppTheme } from '../context/ThemeContext';
 
@@ -13,7 +14,31 @@ export const PrioritySelector: React.FC<PrioritySelectorProps> = ({
   value,
   onChange,
 }) => {
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
+  const isImportant = value === 'important';
+
+  const [trackWidth, setTrackWidth] = useState(300);
+  const pillWidth = (trackWidth - 8) / 2;
+
+  const indicatorPos = useRef(new Animated.Value(isImportant ? pillWidth : 0)).current;
+
+  useEffect(() => {
+    Animated.spring(indicatorPos, {
+      toValue: isImportant ? pillWidth : 0,
+      friction: 7,
+      tension: 90,
+      useNativeDriver: true,
+    }).start();
+  }, [isImportant, pillWidth]);
+
+  const handleSelect = (p: Priority) => {
+    try {
+      Haptics.selectionAsync();
+    } catch {
+      // ignore
+    }
+    onChange(p);
+  };
 
   return (
     <View style={styles.container}>
@@ -22,31 +47,43 @@ export const PrioritySelector: React.FC<PrioritySelectorProps> = ({
       </Text>
       <View
         style={[
-          styles.segmentedContainer,
+          styles.track,
           {
             backgroundColor: colors.surfaceVariant,
-            borderColor: colors.border,
+            borderColor: colors.cardBorder,
           },
         ]}
+        onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
       >
+        <Animated.View
+          style={[
+            styles.slidingPill,
+            {
+              width: pillWidth,
+              backgroundColor: isImportant
+                ? colors.danger + '25'
+                : isDark
+                ? '#232A3B'
+                : '#E2E8F0',
+              borderColor: isImportant ? colors.danger : 'transparent',
+              borderWidth: isImportant ? 1 : 0,
+              transform: [{ translateX: indicatorPos }],
+            },
+          ]}
+        />
+
         {/* Normal Button */}
         <TouchableOpacity
-          style={[
-            styles.segmentButton,
-            value === 'normal' && [
-              styles.activeSegment,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ],
-          ]}
-          onPress={() => onChange('normal')}
-          activeOpacity={0.7}
+          style={[styles.segmentBtn, { width: pillWidth }]}
+          onPress={() => handleSelect('normal')}
+          activeOpacity={0.8}
         >
           <Text
             style={[
               styles.segmentText,
               {
-                color: value === 'normal' ? colors.primary : colors.textSecondary,
-                fontWeight: value === 'normal' ? '600' : '400',
+                color: !isImportant ? colors.text : colors.textSecondary,
+                fontWeight: !isImportant ? '700' : '500',
               },
             ]}
           >
@@ -56,30 +93,21 @@ export const PrioritySelector: React.FC<PrioritySelectorProps> = ({
 
         {/* Important Button */}
         <TouchableOpacity
-          style={[
-            styles.segmentButton,
-            value === 'important' && [
-              styles.activeSegment,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ],
-          ]}
-          onPress={() => onChange('important')}
-          activeOpacity={0.7}
+          style={[styles.segmentBtn, { width: pillWidth }]}
+          onPress={() => handleSelect('important')}
+          activeOpacity={0.8}
         >
           <MaterialCommunityIcons
             name="star"
-            size={16}
-            color={
-              value === 'important' ? colors.danger : colors.textSecondary
-            }
+            size={15}
+            color={isImportant ? colors.danger : colors.textSecondary}
           />
           <Text
             style={[
               styles.segmentText,
               {
-                color:
-                  value === 'important' ? colors.danger : colors.textSecondary,
-                fontWeight: value === 'important' ? '600' : '400',
+                color: isImportant ? colors.danger : colors.textSecondary,
+                fontWeight: isImportant ? '700' : '500',
               },
             ]}
           >
@@ -93,39 +121,39 @@ export const PrioritySelector: React.FC<PrioritySelectorProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 6,
   },
   label: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  segmentedContainer: {
+  track: {
     flexDirection: 'row',
-    borderRadius: 10,
-    padding: 3,
+    alignItems: 'center',
+    padding: 4,
+    borderRadius: 12,
     borderWidth: 1,
+    height: 46,
   },
-  segmentButton: {
-    flex: 1,
+  slidingPill: {
+    position: 'absolute',
+    left: 4,
+    top: 4,
+    bottom: 4,
+    borderRadius: 9,
+  },
+  segmentBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 8,
     gap: 6,
-  },
-  activeSegment: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-    borderWidth: 1,
+    height: '100%',
+    zIndex: 1,
   },
   segmentText: {
-    fontSize: 14,
+    fontSize: 13,
   },
 });

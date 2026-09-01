@@ -1,6 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { ProgressMetrics } from '../services/tasks/StreakCalculator';
 import { useAppTheme } from '../context/ThemeContext';
 
@@ -11,6 +10,32 @@ interface ProgressChartProps {
 export const ProgressChart: React.FC<ProgressChartProps> = ({ metrics }) => {
   const { colors, isDark } = useAppTheme();
 
+  // Animation values
+  const todayProgressAnim = useRef(new Animated.Value(0)).current;
+  const weeklyBarsAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(todayProgressAnim, {
+        toValue: metrics.todayPercentage / 100,
+        duration: 700,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+        useNativeDriver: false,
+      }),
+      Animated.timing(weeklyBarsAnim, {
+        toValue: 1,
+        duration: 750,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [metrics.todayPercentage]);
+
+  const progressBarWidth = todayProgressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
+
   return (
     <View style={styles.container}>
       {/* Today's Summary Card */}
@@ -19,12 +44,12 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ metrics }) => {
           styles.card,
           {
             backgroundColor: colors.card,
-            borderColor: colors.border,
+            borderColor: colors.cardBorder,
           },
         ]}
       >
         <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-          Today
+          Today's Completion
         </Text>
 
         <View style={styles.todayRow}>
@@ -60,18 +85,18 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ metrics }) => {
           </View>
         </View>
 
-        {/* Progress Bar for Today */}
+        {/* Animated Progress Bar */}
         <View
           style={[
             styles.progressBarBackground,
             { backgroundColor: colors.surfaceVariant },
           ]}
         >
-          <View
+          <Animated.View
             style={[
               styles.progressBarFill,
               {
-                width: `${Math.min(metrics.todayPercentage, 100)}%`,
+                width: progressBarWidth,
                 backgroundColor:
                   metrics.todayPercentage === 100
                     ? colors.success
@@ -82,13 +107,13 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ metrics }) => {
         </View>
       </View>
 
-      {/* This Week Card */}
+      {/* This Week Performance Card */}
       <View
         style={[
           styles.card,
           {
             backgroundColor: colors.card,
-            borderColor: colors.border,
+            borderColor: colors.cardBorder,
           },
         ]}
       >
@@ -103,10 +128,15 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ metrics }) => {
 
         <View style={styles.weeklyList}>
           {metrics.weeklyDays.map((day) => {
-            const ratio =
+            const targetRatio =
               day.total > 0
                 ? Math.min(Math.round((day.completed / day.total) * 100), 100)
                 : 0;
+
+            const barWidth = weeklyBarsAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['0%', `${targetRatio}%`],
+            });
 
             return (
               <View key={day.dateStr} style={styles.dayRow}>
@@ -139,13 +169,15 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ metrics }) => {
                     { backgroundColor: colors.surfaceVariant },
                   ]}
                 >
-                  <View
+                  <Animated.View
                     style={[
                       styles.dayBarFill,
                       {
-                        width: `${ratio}%`,
+                        width: barWidth,
                         backgroundColor:
-                          ratio === 100 ? colors.success : colors.primary,
+                          targetRatio === 100
+                            ? colors.success
+                            : colors.primary,
                       },
                     ]}
                   />
@@ -156,7 +188,8 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ metrics }) => {
                   style={[
                     styles.dayRatioText,
                     {
-                      color: day.completed > 0 ? colors.text : colors.textMuted,
+                      color:
+                        day.completed > 0 ? colors.text : colors.textMuted,
                     },
                   ]}
                 >
@@ -174,7 +207,7 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ metrics }) => {
           styles.card,
           {
             backgroundColor: colors.card,
-            borderColor: colors.border,
+            borderColor: colors.cardBorder,
           },
         ]}
       >
@@ -239,10 +272,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   sectionHeader: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -254,29 +287,29 @@ const styles = StyleSheet.create({
   todayRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 6,
+    marginVertical: 4,
   },
   percentageContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 90,
+    width: 85,
   },
   percentageText: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
   },
   percentageSub: {
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 2,
   },
   divider: {
     width: 1,
-    height: 48,
-    marginHorizontal: 16,
+    height: 44,
+    marginHorizontal: 14,
   },
   todayStats: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   statItem: {
     flexDirection: 'row',
@@ -284,14 +317,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
   statLabel: {
-    fontSize: 13,
+    fontSize: 12.5,
   },
   progressBarBackground: {
-    height: 8,
+    height: 7,
     borderRadius: 4,
     overflow: 'hidden',
     marginTop: 12,
@@ -301,7 +334,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   weeklyList: {
-    gap: 10,
+    gap: 9,
     marginTop: 4,
   },
   dayRow: {
@@ -310,13 +343,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dayNameContainer: {
-    width: 36,
+    width: 34,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
   dayName: {
-    fontSize: 14,
+    fontSize: 13,
   },
   todayDot: {
     width: 4,
@@ -325,7 +358,7 @@ const styles = StyleSheet.create({
   },
   dayBarTrack: {
     flex: 1,
-    height: 10,
+    height: 9,
     borderRadius: 5,
     overflow: 'hidden',
   },
@@ -334,8 +367,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   dayRatioText: {
-    width: 44,
-    fontSize: 13,
+    width: 40,
+    fontSize: 12,
     textAlign: 'right',
     fontWeight: '500',
   },
@@ -343,17 +376,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   monthlyStat: {
     alignItems: 'center',
   },
   monthlyNumber: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
   },
   monthlyLabel: {
-    fontSize: 12,
+    fontSize: 11.5,
     marginTop: 2,
   },
 });

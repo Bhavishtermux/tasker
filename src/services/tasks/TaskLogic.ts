@@ -4,14 +4,12 @@ import {
   getTomorrowDateString,
   isOverdueDate,
   parseDateString,
-  formatDateToString,
   addDays,
   addMonths,
-  getTimeOfDayFromTime,
 } from '../../utils/dateUtils';
 
 /**
- * Determine the section for a task based on date and completion state
+ * Determine the date section for a task
  */
 export function getTaskSection(task: Task): TaskSectionType {
   if (task.isCompleted) {
@@ -37,68 +35,11 @@ export function getTaskSection(task: Task): TaskSectionType {
 }
 
 /**
- * Group tasks for a specific date into time-of-day sections:
- * Morning, Afternoon, Evening, and Completed
- */
-export function groupTasksForDate(tasks: Task[], targetDate: string): TaskSectionData[] {
-  const dateTasks = tasks.filter((t) => t.dueDate === targetDate);
-
-  const morning: Task[] = [];
-  const afternoon: Task[] = [];
-  const evening: Task[] = [];
-  const completed: Task[] = [];
-
-  for (const task of dateTasks) {
-    if (task.isCompleted) {
-      completed.push(task);
-      continue;
-    }
-
-    const timeBlock = getTimeOfDayFromTime(task.dueTime, task.timeOfDay);
-    if (timeBlock === 'morning') {
-      morning.push(task);
-    } else if (timeBlock === 'afternoon') {
-      afternoon.push(task);
-    } else {
-      evening.push(task);
-    }
-  }
-
-  const sortByPriorityAndTime = (a: Task, b: Task) => {
-    if (a.priority === 'important' && b.priority !== 'important') return -1;
-    if (a.priority !== 'important' && b.priority === 'important') return 1;
-    if (a.dueTime && b.dueTime) return a.dueTime.localeCompare(b.dueTime);
-    return b.createdAt.localeCompare(a.createdAt);
-  };
-
-  morning.sort(sortByPriorityAndTime);
-  afternoon.sort(sortByPriorityAndTime);
-  evening.sort(sortByPriorityAndTime);
-  completed.sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
-
-  const result: TaskSectionData[] = [];
-
-  if (morning.length > 0) {
-    result.push({ type: 'morning', title: 'Morning', data: morning });
-  }
-  if (afternoon.length > 0) {
-    result.push({ type: 'afternoon', title: 'Afternoon', data: afternoon });
-  }
-  if (evening.length > 0) {
-    result.push({ type: 'evening', title: 'Evening', data: evening });
-  }
-  if (completed.length > 0) {
-    result.push({ type: 'completed', title: 'Completed', data: completed });
-  }
-
-  return result;
-}
-
-/**
- * Group tasks into standard sections: Overdue, Today, Tomorrow, Upcoming, Completed
+ * Group tasks into sections: Overdue, Today, Tomorrow, Upcoming, Completed.
+ * Only non-empty sections are returned.
  */
 export function groupTasksIntoSections(tasks: Task[]): TaskSectionData[] {
-  const sections: Record<'overdue' | 'today' | 'tomorrow' | 'upcoming' | 'completed', Task[]> = {
+  const sections: Record<TaskSectionType, Task[]> = {
     overdue: [],
     today: [],
     tomorrow: [],
@@ -107,10 +48,8 @@ export function groupTasksIntoSections(tasks: Task[]): TaskSectionData[] {
   };
 
   for (const task of tasks) {
-    const sectionType = getTaskSection(task) as keyof typeof sections;
-    if (sections[sectionType]) {
-      sections[sectionType].push(task);
-    }
+    const sectionType = getTaskSection(task);
+    sections[sectionType].push(task);
   }
 
   const sortActiveTasks = (a: Task, b: Task) => {
@@ -166,10 +105,9 @@ export function filterTasksBySearch(tasks: Task[], query: string): Task[] {
   return tasks.filter((task) => {
     const titleMatch = task.title.toLowerCase().includes(cleanQuery);
     const notesMatch = task.notes ? task.notes.toLowerCase().includes(cleanQuery) : false;
-    const categoryMatch = task.category.toLowerCase().includes(cleanQuery);
     const subtaskMatch = task.subtasks.some((s) => s.title.toLowerCase().includes(cleanQuery));
 
-    return titleMatch || notesMatch || categoryMatch || subtaskMatch;
+    return titleMatch || notesMatch || subtaskMatch;
   });
 }
 

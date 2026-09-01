@@ -1,31 +1,28 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Snackbar } from 'react-native-paper';
+import * as Haptics from 'expo-haptics';
 import { useAppTheme } from '../../src/context/ThemeContext';
 import { useTasks } from '../../src/context/TaskContext';
 import { TaskList } from '../../src/components/TaskList';
 import { SearchBar } from '../../src/components/SearchBar';
-import { WeekCalendarStrip } from '../../src/components/WeekCalendarStrip';
-import { FloatingBottomNav } from '../../src/components/FloatingBottomNav';
-import {
-  getTodayDateString,
-  getHeaderTitleForDate,
-} from '../../src/utils/dateUtils';
-import { groupTasksForDate, filterTasksBySearch } from '../../src/services/tasks/TaskLogic';
+import { BottomNavBar, TabName } from '../../src/components/BottomNavBar';
+import { getHeaderDateFormatted } from '../../src/utils/dateUtils';
 import { Task } from '../../src/types/task';
 
 export default function TasksScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
   const {
-    tasks,
+    sections,
     searchQuery,
     setSearchQuery,
     lastDeletedTask,
@@ -33,48 +30,18 @@ export default function TasksScreen() {
     refreshTasks,
   } = useTasks();
 
-  const [selectedDate, setSelectedDate] = useState(getTodayDateString());
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showUndoSnackbar, setShowUndoSnackbar] = useState(false);
 
-  // Group tasks for the selected date
-  const filteredTasks = useMemo(() => {
-    if (searchQuery.trim().length > 0) {
-      return filterTasksBySearch(tasks, searchQuery);
-    }
-    return tasks;
-  }, [tasks, searchQuery]);
-
-  const dateSections = useMemo(() => {
-    if (searchQuery.trim().length > 0) {
-      // Show all search matches across dates
-      return groupTasksForDate(filteredTasks, selectedDate);
-    }
-    return groupTasksForDate(filteredTasks, selectedDate);
-  }, [filteredTasks, selectedDate, searchQuery]);
-
-  // Calculate top-right stats for selected date
-  const dateTasks = tasks.filter((t) => t.dueDate === selectedDate);
-  const completedDateTasks = dateTasks.filter((t) => t.isCompleted);
-
-  // Calculate hours summary (e.g. 1.5 of 7.5 hrs)
-  const totalMinutes = dateTasks.reduce(
-    (acc, t) => acc + (t.estimatedMinutes || (t.isAllDay ? 60 : 30)),
-    0
-  );
-  const completedMinutes = completedDateTasks.reduce(
-    (acc, t) => acc + (t.estimatedMinutes || (t.isAllDay ? 60 : 30)),
-    0
-  );
-
-  const totalHours = (totalMinutes / 60).toFixed(1);
-  const completedHours = (completedMinutes / 60).toFixed(1);
-  const taskCountDisplay = dateTasks.length;
-
-  const headerTitle = getHeaderTitleForDate(selectedDate);
+  const formattedDate = getHeaderDateFormatted();
 
   const handleOpenCreate = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      // ignore
+    }
     router.push('/task/create');
   };
 
@@ -83,6 +50,11 @@ export default function TasksScreen() {
   };
 
   const handleToggleSearch = () => {
+    try {
+      Haptics.selectionAsync();
+    } catch {
+      // ignore
+    }
     if (isSearchVisible) {
       setSearchQuery('');
       setIsSearchVisible(false);
@@ -102,7 +74,7 @@ export default function TasksScreen() {
     setShowUndoSnackbar(false);
   };
 
-  const handleSelectTab = (tab: 'tasks' | 'progress' | 'settings') => {
+  const handleSelectTab = (tab: TabName) => {
     if (tab === 'progress') {
       router.push('/(tabs)/progress');
     } else if (tab === 'settings') {
@@ -123,69 +95,67 @@ export default function TasksScreen() {
     >
       {/* Top Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          {headerTitle}
-        </Text>
+        <View style={styles.titleContainer}>
+          <Text style={[styles.title, { color: colors.text }]}>Tasks</Text>
+          <Text style={[styles.dateSubtitle, { color: colors.textSecondary }]}>
+            {formattedDate}
+          </Text>
+        </View>
 
-        {/* Top Right Stats Pills */}
-        <View style={styles.statsRow}>
-          {/* Total tasks count pill */}
-          <View
+        <View style={styles.headerActions}>
+          {/* Search Toggle Button */}
+          <TouchableOpacity
             style={[
-              styles.pill,
-              { backgroundColor: colors.badgeBackground },
+              styles.iconButton,
+              {
+                backgroundColor: isSearchVisible
+                  ? colors.primaryLight
+                  : colors.surfaceVariant,
+              },
             ]}
+            onPress={handleToggleSearch}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            activeOpacity={0.7}
           >
             <MaterialCommunityIcons
-              name="check"
-              size={12}
-              color={colors.textSecondary}
+              name={isSearchVisible ? 'close' : 'magnify'}
+              size={20}
+              color={isSearchVisible ? colors.primary : colors.textSecondary}
             />
-            <Text style={[styles.pillText, { color: colors.textSecondary }]}>
-              {taskCountDisplay}
-            </Text>
-          </View>
+          </TouchableOpacity>
 
-          {/* Time summary pill */}
-          {totalMinutes > 0 && (
-            <View
-              style={[
-                styles.pill,
-                { backgroundColor: colors.badgeBackground },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="clock-outline"
-                size={12}
-                color={colors.textSecondary}
-              />
-              <Text style={[styles.pillText, { color: colors.textSecondary }]}>
-                {completedHours} of {totalHours} hrs
-              </Text>
-            </View>
-          )}
+          {/* Add (+) Button in Header */}
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.primary }]}
+            onPress={handleOpenCreate}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={22}
+              color={colors.checkboxCheck}
+            />
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Week Calendar Strip */}
-      <WeekCalendarStrip
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-      />
-
-      {/* Inline Search Bar */}
+      {/* Expandable Search Bar */}
       {isSearchVisible && (
         <SearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
           onClear={() => setSearchQuery('')}
-          autoFocus
+          onClose={() => {
+            setSearchQuery('');
+            setIsSearchVisible(false);
+          }}
         />
       )}
 
-      {/* Task List (Morning, Afternoon, Evening, Completed) */}
+      {/* Task Sections (Overdue, Today, Tomorrow, Upcoming, Completed) */}
       <TaskList
-        sections={dateSections}
+        sections={sections}
         onPressTask={handlePressTask}
         isSearchActive={searchQuery.length > 0}
         searchQuery={searchQuery}
@@ -193,13 +163,10 @@ export default function TasksScreen() {
         onRefresh={handleRefresh}
       />
 
-      {/* Floating Bottom Navigation Island */}
-      <FloatingBottomNav
+      {/* Floating 3-Tab Bottom Navigation Bar */}
+      <BottomNavBar
         currentTab="tasks"
-        isSearchActive={isSearchVisible}
         onSelectTab={handleSelectTab}
-        onToggleSearch={handleToggleSearch}
-        onPressAdd={handleOpenCreate}
       />
 
       {/* Undo Delete Snackbar */}
@@ -208,7 +175,7 @@ export default function TasksScreen() {
         onDismiss={() => setShowUndoSnackbar(false)}
         duration={4000}
         action={{
-          label: 'Undo',
+          label: 'UNDO',
           textColor: colors.primary,
           onPress: handleUndo,
         }}
@@ -234,29 +201,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 4,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  titleContainer: {
+    flex: 1,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
-    letterSpacing: -1,
+    letterSpacing: -0.5,
   },
-  statsRow: {
+  dateSubtitle: {
+    fontSize: 13.5,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  pill: {
-    flexDirection: 'row',
+  iconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 12,
+    justifyContent: 'center',
   },
-  pillText: {
-    fontSize: 12,
-    fontWeight: '500',
+  addButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

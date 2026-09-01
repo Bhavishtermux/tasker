@@ -1,38 +1,38 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Task } from '../../types/task';
 import { ITaskRepository } from './ITaskRepository';
-import { getTodayDateString } from '../../utils/dateUtils';
+import { getTodayDateString, getTomorrowDateString } from '../../utils/dateUtils';
 
-const STORAGE_KEY_TASKS = '@antigravity_tasks_v1';
+const STORAGE_KEY_TASKS = '@antigravity_tasks_v2';
 
 export const INITIAL_SAMPLE_TASKS: Task[] = [
   {
     id: 'sample-1',
-    title: 'design user registration process',
+    title: 'Buy groceries',
+    notes: 'Milk, eggs, sourdough bread',
     dueDate: getTodayDateString(),
-    dueTime: '09:30',
+    dueTime: '18:00',
     isAllDay: false,
-    timeOfDay: 'morning',
-    estimatedMinutes: 50,
-    category: 'coinbase',
     priority: 'normal',
     reminder: { preset: 'none', offsetMinutes: 0 },
     repeat: { type: 'none' },
-    subtasks: [],
+    subtasks: [
+      { id: 'sub-1', title: 'Milk', isCompleted: true },
+      { id: 'sub-2', title: 'Eggs', isCompleted: true },
+      { id: 'sub-3', title: 'Bread', isCompleted: false },
+    ],
     isCompleted: false,
     createdAt: new Date().toISOString(),
   },
   {
     id: 'sample-2',
-    title: 'review and provide feedback on the wireframes for the new design concept',
+    title: 'Finish project assignment',
+    notes: 'Submit final draft and review checklist',
     dueDate: getTodayDateString(),
-    dueTime: '10:45',
+    dueTime: '20:00',
     isAllDay: false,
-    timeOfDay: 'morning',
-    estimatedMinutes: 45,
-    category: 'apple',
-    priority: 'normal',
-    reminder: { preset: 'none', offsetMinutes: 0 },
+    priority: 'important',
+    reminder: { preset: '30m', offsetMinutes: 30 },
     repeat: { type: 'none' },
     subtasks: [],
     isCompleted: false,
@@ -40,67 +40,30 @@ export const INITIAL_SAMPLE_TASKS: Task[] = [
   },
   {
     id: 'sample-3',
-    title: 'mood board for the ecommerce template',
-    dueDate: getTodayDateString(),
-    dueTime: '11:30',
+    title: 'Review quarterly goals',
+    dueDate: getTomorrowDateString(),
+    dueTime: '10:00',
     isAllDay: false,
-    timeOfDay: 'morning',
-    estimatedMinutes: 30,
-    category: 'shopify',
     priority: 'normal',
     reminder: { preset: 'none', offsetMinutes: 0 },
-    repeat: { type: 'none' },
+    repeat: { type: 'weekly', interval: 1 },
     subtasks: [],
     isCompleted: false,
     createdAt: new Date().toISOString(),
   },
   {
     id: 'sample-4',
-    title: 'finalize color palette and typography',
+    title: 'Call Mom',
     dueDate: getTodayDateString(),
-    dueTime: '14:00',
+    dueTime: '16:30',
     isAllDay: false,
-    timeOfDay: 'afternoon',
-    estimatedMinutes: 25,
-    category: 'apple',
     priority: 'normal',
     reminder: { preset: 'none', offsetMinutes: 0 },
     repeat: { type: 'none' },
     subtasks: [],
-    isCompleted: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'sample-5',
-    title: 'analyze user feedback and suggest improvements',
-    dueDate: getTodayDateString(),
-    dueTime: '15:30',
-    isAllDay: false,
-    timeOfDay: 'afternoon',
-    estimatedMinutes: 60,
-    category: 'insurance',
-    priority: 'normal',
-    reminder: { preset: 'none', offsetMinutes: 0 },
-    repeat: { type: 'none' },
-    subtasks: [],
-    isCompleted: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'sample-6',
-    title: 'evaluate two potential website layouts',
-    dueDate: getTodayDateString(),
-    dueTime: '16:45',
-    isAllDay: false,
-    timeOfDay: 'afternoon',
-    estimatedMinutes: 45,
-    category: 'shopify',
-    priority: 'normal',
-    reminder: { preset: 'none', offsetMinutes: 0 },
-    repeat: { type: 'none' },
-    subtasks: [],
-    isCompleted: false,
-    createdAt: new Date().toISOString(),
+    isCompleted: true,
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    completedAt: new Date().toISOString(),
   },
 ];
 
@@ -109,7 +72,6 @@ export class AsyncStorageTaskRepository implements ITaskRepository {
     try {
       const data = await AsyncStorage.getItem(STORAGE_KEY_TASKS);
       if (!data) {
-        // Initialize with high quality seed tasks matching reference UI
         await this.saveTasks(INITIAL_SAMPLE_TASKS);
         return INITIAL_SAMPLE_TASKS;
       }

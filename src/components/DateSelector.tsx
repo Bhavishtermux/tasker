@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  Animated,
   Platform,
 } from 'react-native';
 import DateTimePicker, {
   DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useAppTheme } from '../context/ThemeContext';
 import {
   formatDateToString,
@@ -28,11 +30,30 @@ export const DateSelector: React.FC<DateSelectorProps> = ({
   selectedDate,
   onSelectDate,
 }) => {
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const [showPicker, setShowPicker] = useState(false);
 
   const today = getTodayDateString();
   const tomorrow = getTomorrowDateString();
+
+  const isToday = selectedDate === today;
+  const isTomorrow = selectedDate === tomorrow;
+  const isCustom = !isToday && !isTomorrow;
+
+  const activeIndex = isToday ? 0 : isTomorrow ? 1 : 2;
+  const [containerWidth, setContainerWidth] = useState(300);
+  const pillWidth = (containerWidth - 8) / 3;
+
+  const indicatorPos = useRef(new Animated.Value(activeIndex * pillWidth)).current;
+
+  useEffect(() => {
+    Animated.spring(indicatorPos, {
+      toValue: activeIndex * pillWidth,
+      friction: 7,
+      tension: 90,
+      useNativeDriver: true,
+    }).start();
+  }, [activeIndex, pillWidth]);
 
   const handlePickerChange = (
     event: DateTimePickerEvent,
@@ -44,39 +65,64 @@ export const DateSelector: React.FC<DateSelectorProps> = ({
     }
   };
 
-  const isCustomDate = selectedDate !== today && selectedDate !== tomorrow;
+  const handleSelectOption = (index: number) => {
+    try {
+      Haptics.selectionAsync();
+    } catch {
+      // ignore
+    }
+    if (index === 0) {
+      onSelectDate(today);
+    } else if (index === 1) {
+      onSelectDate(tomorrow);
+    } else {
+      setShowPicker(true);
+    }
+  };
 
   return (
     <View style={styles.container}>
       <Text style={[styles.label, { color: colors.textSecondary }]}>Date</Text>
-      <View style={styles.chipRow}>
-        {/* Today Button */}
-        <TouchableOpacity
+
+      <View
+        style={[
+          styles.segmentedTrack,
+          {
+            backgroundColor: colors.surfaceVariant,
+            borderColor: colors.cardBorder,
+          },
+        ]}
+        onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+      >
+        {/* Animated Sliding Indicator */}
+        <Animated.View
           style={[
-            styles.chip,
+            styles.slidingPill,
             {
-              backgroundColor:
-                selectedDate === today
-                  ? colors.primaryLight
-                  : colors.surfaceVariant,
-              borderColor:
-                selectedDate === today ? colors.primary : colors.border,
+              width: pillWidth,
+              backgroundColor: isDark ? '#232A3B' : '#E2E8F0',
+              transform: [{ translateX: indicatorPos }],
             },
           ]}
-          onPress={() => onSelectDate(today)}
-          activeOpacity={0.7}
+        />
+
+        {/* Today Button */}
+        <TouchableOpacity
+          style={[styles.segmentBtn, { width: pillWidth }]}
+          onPress={() => handleSelectOption(0)}
+          activeOpacity={0.8}
         >
           <MaterialCommunityIcons
             name="calendar-today"
-            size={16}
-            color={selectedDate === today ? colors.primary : colors.textSecondary}
+            size={15}
+            color={isToday ? colors.primary : colors.textSecondary}
           />
           <Text
             style={[
-              styles.chipText,
+              styles.segmentText,
               {
-                color: selectedDate === today ? colors.primary : colors.text,
-                fontWeight: selectedDate === today ? '600' : '400',
+                color: isToday ? colors.text : colors.textSecondary,
+                fontWeight: isToday ? '700' : '500',
               },
             ]}
           >
@@ -86,33 +132,21 @@ export const DateSelector: React.FC<DateSelectorProps> = ({
 
         {/* Tomorrow Button */}
         <TouchableOpacity
-          style={[
-            styles.chip,
-            {
-              backgroundColor:
-                selectedDate === tomorrow
-                  ? colors.primaryLight
-                  : colors.surfaceVariant,
-              borderColor:
-                selectedDate === tomorrow ? colors.primary : colors.border,
-            },
-          ]}
-          onPress={() => onSelectDate(tomorrow)}
-          activeOpacity={0.7}
+          style={[styles.segmentBtn, { width: pillWidth }]}
+          onPress={() => handleSelectOption(1)}
+          activeOpacity={0.8}
         >
           <MaterialCommunityIcons
             name="calendar-arrow-right"
-            size={16}
-            color={
-              selectedDate === tomorrow ? colors.primary : colors.textSecondary
-            }
+            size={15}
+            color={isTomorrow ? colors.primary : colors.textSecondary}
           />
           <Text
             style={[
-              styles.chipText,
+              styles.segmentText,
               {
-                color: selectedDate === tomorrow ? colors.primary : colors.text,
-                fontWeight: selectedDate === tomorrow ? '600' : '400',
+                color: isTomorrow ? colors.text : colors.textSecondary,
+                fontWeight: isTomorrow ? '700' : '500',
               },
             ]}
           >
@@ -120,35 +154,28 @@ export const DateSelector: React.FC<DateSelectorProps> = ({
           </Text>
         </TouchableOpacity>
 
-        {/* Custom Date Button */}
+        {/* Custom Pick Date Button */}
         <TouchableOpacity
-          style={[
-            styles.chip,
-            {
-              backgroundColor: isCustomDate
-                ? colors.primaryLight
-                : colors.surfaceVariant,
-              borderColor: isCustomDate ? colors.primary : colors.border,
-            },
-          ]}
-          onPress={() => setShowPicker(true)}
-          activeOpacity={0.7}
+          style={[styles.segmentBtn, { width: pillWidth }]}
+          onPress={() => handleSelectOption(2)}
+          activeOpacity={0.8}
         >
           <MaterialCommunityIcons
             name="calendar-edit"
-            size={16}
-            color={isCustomDate ? colors.primary : colors.textSecondary}
+            size={15}
+            color={isCustom ? colors.primary : colors.textSecondary}
           />
           <Text
             style={[
-              styles.chipText,
+              styles.segmentText,
               {
-                color: isCustomDate ? colors.primary : colors.text,
-                fontWeight: isCustomDate ? '600' : '400',
+                color: isCustom ? colors.text : colors.textSecondary,
+                fontWeight: isCustom ? '700' : '500',
               },
             ]}
+            numberOfLines={1}
           >
-            {isCustomDate ? formatTaskDateBadge(selectedDate) : 'Pick Date'}
+            {isCustom ? formatTaskDateBadge(selectedDate) : 'Pick Date'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -167,30 +194,39 @@ export const DateSelector: React.FC<DateSelectorProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 6,
   },
   label: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  chipRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  chip: {
+  segmentedTrack: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
+    padding: 4,
+    borderRadius: 12,
     borderWidth: 1,
+    height: 46,
   },
-  chipText: {
-    fontSize: 14,
+  slidingPill: {
+    position: 'absolute',
+    left: 4,
+    top: 4,
+    bottom: 4,
+    borderRadius: 9,
+  },
+  segmentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: '100%',
+    zIndex: 1,
+  },
+  segmentText: {
+    fontSize: 13,
   },
 });

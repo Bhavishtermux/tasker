@@ -1,5 +1,3 @@
-import { TimeOfDay } from '../types/task';
-
 /**
  * Format a Date object to YYYY-MM-DD local string
  */
@@ -50,17 +48,15 @@ export function getTomorrowDateString(): string {
 }
 
 /**
- * Format date nicely for header (e.g. "today", "tomorrow", or "Friday, Sep 16")
+ * Format date for header (e.g. "Tuesday, Sep 1")
  */
-export function getHeaderTitleForDate(dateStr: string): string {
-  const today = getTodayDateString();
-  const tomorrow = getTomorrowDateString();
-
-  if (dateStr === today) return 'today';
-  if (dateStr === tomorrow) return 'tomorrow';
-
-  const date = parseDateString(dateStr);
-  return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }).toLowerCase();
+export function getHeaderDateFormatted(date: Date = new Date()): string {
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  };
+  return date.toLocaleDateString(undefined, options);
 }
 
 /**
@@ -146,56 +142,4 @@ export function formatCompletedAt(isoString?: string): string {
     return `Today at ${timeStr}`;
   }
   return `${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} at ${timeStr}`;
-}
-
-export interface WeekDayItem {
-  dayName: string; // Mon, Tue...
-  dayNumber: number; // 12, 13...
-  dateStr: string; // YYYY-MM-DD
-  isToday: boolean;
-}
-
-/**
- * Get the 7 days of the week for a given selected date (Mon through Sun)
- */
-export function getWeekDaysForDate(selectedDateStr: string): WeekDayItem[] {
-  const baseDate = parseDateString(selectedDateStr);
-  const todayStr = getTodayDateString();
-
-  const dayOfWeek = baseDate.getDay(); // 0 = Sun, 1 = Mon...
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-
-  const monday = new Date(baseDate);
-  monday.setDate(baseDate.getDate() + mondayOffset);
-
-  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const result: WeekDayItem[] = [];
-
-  for (let i = 0; i < 7; i++) {
-    const loopDate = new Date(monday);
-    loopDate.setDate(monday.getDate() + i);
-    const dateStr = formatDateToString(loopDate);
-
-    result.push({
-      dayName: dayNames[i],
-      dayNumber: loopDate.getDate(),
-      dateStr,
-      isToday: dateStr === todayStr,
-    });
-  }
-
-  return result;
-}
-
-/**
- * Determine default TimeOfDay from dueTime (HH:mm)
- */
-export function getTimeOfDayFromTime(timeStr?: string, explicitTimeOfDay?: TimeOfDay): TimeOfDay {
-  if (explicitTimeOfDay) return explicitTimeOfDay;
-  if (!timeStr) return 'morning';
-
-  const [hours] = timeStr.split(':').map((n) => parseInt(n, 10));
-  if (hours < 12) return 'morning';
-  if (hours < 17) return 'afternoon';
-  return 'evening';
 }

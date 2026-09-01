@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,19 @@ import {
   TouchableOpacity,
   Pressable,
   Animated,
+  Easing,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Task, Subtask } from '../types/task';
 import { useAppTheme } from '../context/ThemeContext';
 import { useTasks } from '../context/TaskContext';
-import { formatTime12Hour, formatCompletedAt } from '../utils/dateUtils';
+import {
+  formatTaskDateBadge,
+  formatTime12Hour,
+  isOverdueDate,
+  formatCompletedAt,
+} from '../utils/dateUtils';
 
 interface TaskItemProps {
   task: Task;
@@ -22,11 +28,40 @@ interface TaskItemProps {
 export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
   const { colors, isDark } = useAppTheme();
   const { toggleTaskCompletion, toggleSubtask } = useTasks();
-  const [scaleValue] = useState(new Animated.Value(1));
+
+  // Animations
+  const rowScale = useRef(new Animated.Value(1)).current;
+  const checkScale = useRef(new Animated.Value(task.isCompleted ? 1 : 0)).current;
+  const checkBounce = useRef(new Animated.Value(1)).current;
+  const strikethroughProgress = useRef(new Animated.Value(task.isCompleted ? 1 : 0)).current;
+  const contentOpacity = useRef(new Animated.Value(task.isCompleted ? 0.55 : 1)).current;
+
   const [expandedSubtasks, setExpandedSubtasks] = useState(false);
 
+  const isOverdue = !task.isCompleted && isOverdueDate(task.dueDate);
   const totalSubtasks = task.subtasks.length;
   const completedSubtasks = task.subtasks.filter((s) => s.isCompleted).length;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(checkScale, {
+        toValue: task.isCompleted ? 1 : 0,
+        duration: 220,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+        useNativeDriver: true,
+      }),
+      Animated.timing(contentOpacity, {
+        toValue: task.isCompleted ? 0.55 : 1,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(strikethroughProgress, {
+        toValue: task.isCompleted ? 1 : 0,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [task.isCompleted]);
 
   const handleToggle = () => {
     try {
@@ -35,20 +70,40 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
       // ignore
     }
 
+    // Tactile checkbox pop animation
     Animated.sequence([
-      Animated.timing(scaleValue, {
-        toValue: 0.85,
-        duration: 80,
+      Animated.timing(checkBounce, {
+        toValue: 0.8,
+        duration: 70,
         useNativeDriver: true,
       }),
-      Animated.timing(scaleValue, {
+      Animated.spring(checkBounce, {
         toValue: 1,
-        duration: 100,
+        friction: 4,
+        tension: 80,
         useNativeDriver: true,
       }),
     ]).start();
 
     toggleTaskCompletion(task.id);
+  };
+
+  const handlePressIn = () => {
+    Animated.timing(rowScale, {
+      toValue: 0.98,
+      duration: 100,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(rowScale, {
+      toValue: 1,
+      friction: 6,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handleSubtaskToggle = (subtask: Subtask) => {
@@ -60,223 +115,269 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
     toggleSubtask(task.id, subtask.id);
   };
 
-  // Determine duration or time badge label
-  const durationBadge =
-    task.estimatedMinutes !== undefined && task.estimatedMinutes > 0
-      ? `${task.estimatedMinutes} min`
-      : task.dueTime && !task.isAllDay
-      ? formatTime12Hour(task.dueTime)
-      : null;
-
-  // Format category tag e.g. "@coinbase: "
-  const hasCategoryTag = !!task.category && task.category.trim().length > 0;
-  const categoryTag = hasCategoryTag
-    ? task.category.startsWith('@')
-      ? `${task.category}: `
-      : `@${task.category}: `
-    : '';
-
   return (
-    <View
+    <Animated.View
       style={[
-        styles.card,
+        styles.cardContainer,
         {
-          backgroundColor: colors.card,
-          borderColor: colors.cardBorder,
+          transform: [{ scale: rowScale }],
         },
       ]}
     >
-      <Pressable
-        style={styles.mainPressable}
-        onPress={onPress}
-        android_ripple={{ color: colors.surfaceVariant }}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.card,
+            borderColor: isOverdue ? colors.danger + '40' : colors.cardBorder,
+          },
+        ]}
       >
-        {/* Rounded Squircle Checkbox */}
-        <TouchableOpacity
-          style={styles.checkboxTouch}
-          onPress={handleToggle}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          activeOpacity={0.7}
+        <Pressable
+          style={styles.mainPressable}
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          android_ripple={{ color: colors.surfaceVariant }}
         >
-          <Animated.View
-            style={[
-              styles.checkbox,
-              {
-                borderColor: task.isCompleted
-                  ? colors.text
-                  : colors.checkboxBorder,
-                backgroundColor: task.isCompleted
-                  ? colors.text
-                  : 'transparent',
-                transform: [{ scale: scaleValue }],
-              },
-            ]}
+          {/* Signature Tactile Checkbox */}
+          <TouchableOpacity
+            style={styles.checkboxTouch}
+            onPress={handleToggle}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
           >
-            {task.isCompleted && (
-              <MaterialCommunityIcons
-                name="check"
-                size={14}
-                color={colors.background}
-              />
-            )}
-          </Animated.View>
-        </TouchableOpacity>
+            <Animated.View
+              style={[
+                styles.checkboxOuter,
+                {
+                  borderColor: task.isCompleted
+                    ? colors.primary
+                    : isOverdue
+                    ? colors.danger
+                    : colors.checkboxBorder,
+                  transform: [{ scale: checkBounce }],
+                },
+              ]}
+            >
+              <Animated.View
+                style={[
+                  styles.checkboxFill,
+                  {
+                    backgroundColor: colors.primary,
+                    transform: [{ scale: checkScale }],
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="check"
+                  size={13}
+                  color={colors.checkboxCheck}
+                />
+              </Animated.View>
+            </Animated.View>
+          </TouchableOpacity>
 
-        {/* Task Content */}
-        <View style={styles.textContainer}>
-          <Text
-            style={[
-              styles.titleText,
-              {
-                color: task.isCompleted ? colors.textMuted : colors.text,
-                textDecorationLine: task.isCompleted ? 'line-through' : 'none',
-              },
-            ]}
-          >
-            {categoryTag ? (
+          {/* Task Title & Details */}
+          <Animated.View style={[styles.contentContainer, { opacity: contentOpacity }]}>
+            <View style={styles.titleRow}>
               <Text
                 style={[
-                  styles.tagText,
+                  styles.title,
                   {
                     color: task.isCompleted ? colors.textMuted : colors.text,
-                    fontWeight: '700',
+                    textDecorationLine: task.isCompleted ? 'line-through' : 'none',
                   },
                 ]}
+                numberOfLines={2}
               >
-                {categoryTag}
+                {task.title}
               </Text>
-            ) : null}
-            {task.title}
-          </Text>
 
-          {/* Optional notes preview */}
-          {!!task.notes && !task.isCompleted && (
-            <Text
-              style={[styles.notesText, { color: colors.textSecondary }]}
-              numberOfLines={1}
-            >
-              {task.notes}
-            </Text>
-          )}
+              {task.priority === 'important' && !task.isCompleted && (
+                <View
+                  style={[
+                    styles.importantBadge,
+                    { backgroundColor: colors.importantBadge },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="star"
+                    size={11}
+                    color={colors.importantText}
+                  />
+                  <Text
+                    style={[styles.importantText, { color: colors.importantText }]}
+                  >
+                    Important
+                  </Text>
+                </View>
+              )}
+            </View>
 
-          {/* Completed timestamp if completed */}
-          {task.isCompleted && !!task.completedAt && (
-            <Text style={[styles.completedTimeText, { color: colors.textMuted }]}>
-              {formatCompletedAt(task.completedAt)}
-            </Text>
-          )}
-
-          {/* Subtask pill if present */}
-          {totalSubtasks > 0 && !task.isCompleted && (
-            <TouchableOpacity
-              style={[
-                styles.subtaskPill,
-                { backgroundColor: colors.surfaceVariant },
-              ]}
-              onPress={() => setExpandedSubtasks(!expandedSubtasks)}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons
-                name="format-list-checks"
-                size={12}
-                color={colors.textSecondary}
-              />
+            {/* Optional Notes */}
+            {!!task.notes && !task.isCompleted && (
               <Text
-                style={[styles.subtaskPillText, { color: colors.textSecondary }]}
-              >
-                {completedSubtasks}/{totalSubtasks} subtasks
-              </Text>
-              <MaterialCommunityIcons
-                name={expandedSubtasks ? 'chevron-up' : 'chevron-down'}
-                size={12}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Right Duration / Time Pill */}
-        {durationBadge && !task.isCompleted && (
-          <View
-            style={[
-              styles.durationBadge,
-              { backgroundColor: colors.badgeBackground },
-            ]}
-          >
-            <Text
-              style={[styles.durationText, { color: colors.badgeText }]}
-            >
-              {durationBadge}
-            </Text>
-          </View>
-        )}
-
-        {/* Star for important tasks */}
-        {task.priority === 'important' && !task.isCompleted && (
-          <View style={styles.starBadge}>
-            <MaterialCommunityIcons
-              name="star"
-              size={14}
-              color={colors.warning}
-            />
-          </View>
-        )}
-      </Pressable>
-
-      {/* Expanded Subtasks List */}
-      {expandedSubtasks && totalSubtasks > 0 && !task.isCompleted && (
-        <View
-          style={[
-            styles.subtasksContainer,
-            {
-              backgroundColor: isDark ? '#141418' : '#F4F4F5',
-              borderTopColor: colors.cardBorder,
-            },
-          ]}
-        >
-          {task.subtasks.map((subtask) => (
-            <TouchableOpacity
-              key={subtask.id}
-              style={styles.subtaskRow}
-              onPress={() => handleSubtaskToggle(subtask)}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons
-                name={
-                  subtask.isCompleted
-                    ? 'checkbox-marked'
-                    : 'checkbox-blank-outline'
-                }
-                size={16}
-                color={subtask.isCompleted ? colors.success : colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.subtaskRowText,
-                  {
-                    color: subtask.isCompleted ? colors.textMuted : colors.text,
-                    textDecorationLine: subtask.isCompleted
-                      ? 'line-through'
-                      : 'none',
-                  },
-                ]}
+                style={[styles.notes, { color: colors.textSecondary }]}
                 numberOfLines={1}
               >
-                {subtask.title}
+                {task.notes}
               </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </View>
+            )}
+
+            {/* Metadata (Date/Time, Repeat, Subtasks) */}
+            <View style={styles.metaRow}>
+              {task.isCompleted ? (
+                <Text style={[styles.metaText, { color: colors.textMuted }]}>
+                  {formatCompletedAt(task.completedAt)}
+                </Text>
+              ) : (
+                <>
+                  <View style={styles.metaItem}>
+                    <MaterialCommunityIcons
+                      name={isOverdue ? 'alert-circle-outline' : 'calendar-outline'}
+                      size={12}
+                      color={isOverdue ? colors.danger : colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.metaText,
+                        { color: isOverdue ? colors.danger : colors.textSecondary },
+                      ]}
+                    >
+                      {formatTaskDateBadge(task.dueDate)}
+                      {!task.isAllDay && task.dueTime
+                        ? ` · ${formatTime12Hour(task.dueTime)}`
+                        : ''}
+                    </Text>
+                  </View>
+
+                  {task.repeat && task.repeat.type !== 'none' && (
+                    <View style={styles.metaItem}>
+                      <MaterialCommunityIcons
+                        name="repeat"
+                        size={12}
+                        color={colors.textSecondary}
+                      />
+                    </View>
+                  )}
+
+                  {task.reminder && task.reminder.preset !== 'none' && (
+                    <View style={styles.metaItem}>
+                      <MaterialCommunityIcons
+                        name="bell-outline"
+                        size={12}
+                        color={colors.textSecondary}
+                      />
+                    </View>
+                  )}
+
+                  {totalSubtasks > 0 && (
+                    <TouchableOpacity
+                      style={[
+                        styles.subtaskPill,
+                        {
+                          backgroundColor:
+                            completedSubtasks === totalSubtasks
+                              ? colors.success + '20'
+                              : colors.surfaceVariant,
+                        },
+                      ]}
+                      onPress={() => setExpandedSubtasks(!expandedSubtasks)}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons
+                        name="format-list-checks"
+                        size={11}
+                        color={
+                          completedSubtasks === totalSubtasks
+                            ? colors.success
+                            : colors.textSecondary
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.subtaskPillText,
+                          {
+                            color:
+                              completedSubtasks === totalSubtasks
+                                ? colors.success
+                                : colors.textSecondary,
+                          },
+                        ]}
+                      >
+                        {completedSubtasks}/{totalSubtasks}
+                      </Text>
+                      <MaterialCommunityIcons
+                        name={expandedSubtasks ? 'chevron-up' : 'chevron-down'}
+                        size={11}
+                        color={colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+            </View>
+          </Animated.View>
+        </Pressable>
+
+        {/* Subtasks Expanded Preview */}
+        {expandedSubtasks && totalSubtasks > 0 && !task.isCompleted && (
+          <View
+            style={[
+              styles.subtasksContainer,
+              {
+                backgroundColor: isDark ? '#0E1017' : '#F1F5F9',
+                borderTopColor: colors.cardBorder,
+              },
+            ]}
+          >
+            {task.subtasks.map((subtask) => (
+              <TouchableOpacity
+                key={subtask.id}
+                style={styles.subtaskRow}
+                onPress={() => handleSubtaskToggle(subtask)}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name={
+                    subtask.isCompleted
+                      ? 'checkbox-marked'
+                      : 'checkbox-blank-outline'
+                  }
+                  size={15}
+                  color={subtask.isCompleted ? colors.success : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.subtaskText,
+                    {
+                      color: subtask.isCompleted ? colors.textMuted : colors.text,
+                      textDecorationLine: subtask.isCompleted
+                        ? 'line-through'
+                        : 'none',
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {subtask.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 16,
+  cardContainer: {
     marginHorizontal: 16,
     marginVertical: 4,
+  },
+  card: {
+    borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
   },
@@ -291,66 +392,81 @@ const styles = StyleSheet.create({
     marginTop: 2,
     padding: 2,
   },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6, // rounded squircle
+  checkboxOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  textContainer: {
+  checkboxFill: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 5,
+  },
+  contentContainer: {
     flex: 1,
-    paddingRight: 8,
   },
-  titleText: {
-    fontSize: 14.5,
-    fontWeight: '400',
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '500',
+    flex: 1,
     lineHeight: 20,
     letterSpacing: -0.1,
   },
-  tagText: {
-    fontSize: 14.5,
-    letterSpacing: -0.1,
+  importantBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
-  notesText: {
-    fontSize: 12.5,
-    marginTop: 4,
-    lineHeight: 16,
+  importantText: {
+    fontSize: 10.5,
+    fontWeight: '700',
   },
-  completedTimeText: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  durationBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginTop: 1,
-  },
-  durationText: {
-    fontSize: 11.5,
-    fontWeight: '500',
-    letterSpacing: -0.1,
-  },
-  starBadge: {
-    marginLeft: 6,
+  notes: {
+    fontSize: 13,
     marginTop: 3,
+    lineHeight: 17,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  metaText: {
+    fontSize: 12,
   },
   subtaskPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginTop: 6,
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   subtaskPillText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   subtasksContainer: {
     paddingVertical: 8,
@@ -361,9 +477,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 5,
+    paddingVertical: 4,
   },
-  subtaskRowText: {
+  subtaskText: {
     fontSize: 13,
     flex: 1,
   },

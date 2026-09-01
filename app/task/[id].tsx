@@ -20,19 +20,11 @@ import { DateSelector } from '../../src/components/DateSelector';
 import { TimeSelector } from '../../src/components/TimeSelector';
 import { ReminderSelector } from '../../src/components/ReminderSelector';
 import { RepeatSelector } from '../../src/components/RepeatSelector';
-import { CategorySelector } from '../../src/components/CategorySelector';
 import { PrioritySelector } from '../../src/components/PrioritySelector';
 import { SubtaskList } from '../../src/components/SubtaskList';
 import { ConfirmationModal } from '../../src/components/ConfirmationModal';
-import { Priority, ReminderRule, RepeatRule, Subtask, TimeOfDay } from '../../src/types/task';
+import { Priority, ReminderRule, RepeatRule, Subtask } from '../../src/types/task';
 import { formatCompletedAt } from '../../src/utils/dateUtils';
-
-const DURATION_PRESETS = [15, 25, 30, 45, 50, 60];
-const TIME_OF_DAY_OPTIONS: { type: TimeOfDay; label: string; icon: string }[] = [
-  { type: 'morning', label: 'Morning', icon: 'weather-sunset-up' },
-  { type: 'afternoon', label: 'Afternoon', icon: 'white-balance-sunny' },
-  { type: 'evening', label: 'Evening', icon: 'weather-night' },
-];
 
 export default function EditTaskScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -46,10 +38,7 @@ export default function EditTaskScreen() {
   const [notes, setNotes] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [isAllDay, setIsAllDay] = useState(false);
-  const [dueTime, setDueTime] = useState('09:30');
-  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('morning');
-  const [estimatedMinutes, setEstimatedMinutes] = useState<number>(45);
-  const [category, setCategory] = useState('coinbase');
+  const [dueTime, setDueTime] = useState('18:00');
   const [priority, setPriority] = useState<Priority>('normal');
   const [reminder, setReminder] = useState<ReminderRule>({
     preset: 'none',
@@ -71,10 +60,7 @@ export default function EditTaskScreen() {
       setNotes(existingTask.notes || '');
       setDueDate(existingTask.dueDate);
       setIsAllDay(existingTask.isAllDay);
-      setDueTime(existingTask.dueTime || '09:30');
-      setTimeOfDay(existingTask.timeOfDay || 'morning');
-      setEstimatedMinutes(existingTask.estimatedMinutes || 45);
-      setCategory(existingTask.category);
+      setDueTime(existingTask.dueTime || '18:00');
       setPriority(existingTask.priority);
       setReminder(existingTask.reminder || { preset: 'none', offsetMinutes: 0 });
       setRepeat(existingTask.repeat || { type: 'none', interval: 1 });
@@ -97,7 +83,7 @@ export default function EditTaskScreen() {
             style={[styles.saveButton, { backgroundColor: colors.primary, marginTop: 16 }]}
             onPress={() => router.back()}
           >
-            <Text style={[styles.saveButtonText, { color: isDark ? '#000000' : '#FFFFFF' }]}>
+            <Text style={[styles.saveButtonText, { color: colors.checkboxCheck }]}>
               Go Back
             </Text>
           </TouchableOpacity>
@@ -162,9 +148,6 @@ export default function EditTaskScreen() {
       dueDate,
       dueTime: isAllDay ? undefined : dueTime,
       isAllDay,
-      timeOfDay,
-      estimatedMinutes,
-      category,
       priority,
       reminder,
       repeat,
@@ -214,7 +197,7 @@ export default function EditTaskScreen() {
               onPress={handleSave}
               activeOpacity={0.8}
             >
-              <Text style={[styles.saveButtonText, { color: isDark ? '#000000' : '#FFFFFF' }]}>
+              <Text style={[styles.saveButtonText, { color: colors.checkboxCheck }]}>
                 Save
               </Text>
             </TouchableOpacity>
@@ -282,117 +265,6 @@ export default function EditTaskScreen() {
             )}
           </View>
 
-          {/* Time of Day */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>
-              Time of Day
-            </Text>
-            <View style={styles.timeOfDayRow}>
-              {TIME_OF_DAY_OPTIONS.map((tod) => {
-                const isSelected = timeOfDay === tod.type;
-                return (
-                  <TouchableOpacity
-                    key={tod.type}
-                    style={[
-                      styles.todButton,
-                      {
-                        backgroundColor: isSelected
-                          ? colors.primaryLight
-                          : colors.surfaceVariant,
-                        borderColor: isSelected ? colors.border : 'transparent',
-                      },
-                    ]}
-                    onPress={() => setTimeOfDay(tod.type)}
-                    activeOpacity={0.7}
-                  >
-                    <MaterialCommunityIcons
-                      name={tod.icon as any}
-                      size={16}
-                      color={isSelected ? colors.text : colors.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.todText,
-                        {
-                          color: isSelected ? colors.text : colors.textSecondary,
-                          fontWeight: isSelected ? '700' : '400',
-                        },
-                      ]}
-                    >
-                      {tod.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Duration */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>
-              Duration
-            </Text>
-            <View style={styles.durationRow}>
-              {DURATION_PRESETS.map((mins) => {
-                const isSelected = estimatedMinutes === mins;
-                return (
-                  <TouchableOpacity
-                    key={mins}
-                    style={[
-                      styles.durationChip,
-                      {
-                        backgroundColor: isSelected
-                          ? colors.primaryLight
-                          : colors.surfaceVariant,
-                        borderColor: isSelected ? colors.border : 'transparent',
-                      },
-                    ]}
-                    onPress={() => setEstimatedMinutes(mins)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.durationChipText,
-                        {
-                          color: isSelected ? colors.text : colors.textSecondary,
-                          fontWeight: isSelected ? '700' : '400',
-                        },
-                      ]}
-                    >
-                      {mins} min
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Category / Tag */}
-          <CategorySelector
-            selectedCategory={category}
-            onSelectCategory={setCategory}
-          />
-
-          {/* Date Selector */}
-          <DateSelector selectedDate={dueDate} onSelectDate={setDueDate} />
-
-          {/* Time Selector */}
-          <TimeSelector
-            isAllDay={isAllDay}
-            onToggleAllDay={setIsAllDay}
-            dueTime={dueTime}
-            onSelectTime={setDueTime}
-          />
-
-          {/* Priority */}
-          <PrioritySelector value={priority} onChange={setPriority} />
-
-          {/* Reminder */}
-          <ReminderSelector value={reminder} onChange={setReminder} />
-
-          {/* Repeat */}
-          <RepeatSelector value={repeat} onChange={setRepeat} />
-
           {/* Notes Input */}
           <View style={styles.fieldGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>
@@ -416,6 +288,26 @@ export default function EditTaskScreen() {
               textAlignVertical="top"
             />
           </View>
+
+          {/* Date Selector */}
+          <DateSelector selectedDate={dueDate} onSelectDate={setDueDate} />
+
+          {/* Time Selector */}
+          <TimeSelector
+            isAllDay={isAllDay}
+            onToggleAllDay={setIsAllDay}
+            dueTime={dueTime}
+            onSelectTime={setDueTime}
+          />
+
+          {/* Priority */}
+          <PrioritySelector value={priority} onChange={setPriority} />
+
+          {/* Reminder */}
+          <ReminderSelector value={reminder} onChange={setReminder} />
+
+          {/* Repeat */}
+          <RepeatSelector value={repeat} onChange={setRepeat} />
 
           {/* Subtasks */}
           <SubtaskList
@@ -556,43 +448,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
-    minHeight: 80,
+    minHeight: 70,
     borderWidth: 1,
   },
   errorText: {
     fontSize: 12,
     marginTop: 4,
-  },
-  timeOfDayRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  todButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 6,
-  },
-  todText: {
-    fontSize: 13,
-  },
-  durationRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  durationChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  durationChipText: {
-    fontSize: 13,
   },
   statusActionButton: {
     flexDirection: 'row',

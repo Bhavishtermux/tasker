@@ -23,45 +23,44 @@ export const StreakCard: React.FC<StreakCardProps> = ({
         style={[
           styles.mainCard,
           {
-            backgroundColor: isDark ? '#2D2013' : '#FEF3E2',
-            borderColor: '#F9AB00',
+            backgroundColor: colors.card,
+            borderColor: '#F59E0B' + '50',
           },
         ]}
       >
         <View style={styles.streakHeader}>
           <Text style={styles.fireEmoji}>🔥</Text>
           <View>
-            <Text style={[styles.streakTitle, { color: isDark ? '#FDD663' : '#B06000' }]}>
+            <Text style={[styles.streakTitle, { color: '#FBBF24' }]}>
               Current Streak
             </Text>
-            <Text style={[styles.streakNumber, { color: isDark ? '#FFFFFF' : '#202124' }]}>
+            <Text style={[styles.streakNumber, { color: colors.text }]}>
               {currentStreak} {currentStreak === 1 ? 'day' : 'days'}
             </Text>
           </View>
         </View>
-        <Text style={[styles.streakSub, { color: isDark ? '#FDD663' : '#704800' }]}>
+        <Text style={[styles.streakSub, { color: colors.textSecondary }]}>
           {currentStreak > 0
-            ? 'Great job keeping up the consistency!'
-            : 'Complete tasks today to start your streak!'}
+            ? 'Great job keeping up daily consistency!'
+            : 'Complete tasks today to start your streak.'}
         </Text>
       </View>
 
       {/* Row for Best Streak & Total Completed */}
       <View style={styles.statsRow}>
-        {/* Best Streak */}
         <View
           style={[
             styles.smallCard,
             {
               backgroundColor: colors.card,
-              borderColor: colors.border,
+              borderColor: colors.cardBorder,
             },
           ]}
         >
           <View style={styles.smallCardHeader}>
             <MaterialCommunityIcons
               name="trophy-outline"
-              size={18}
+              size={17}
               color={colors.warning}
             />
             <Text style={[styles.smallCardLabel, { color: colors.textSecondary }]}>
@@ -73,20 +72,19 @@ export const StreakCard: React.FC<StreakCardProps> = ({
           </Text>
         </View>
 
-        {/* Total Completed */}
         <View
           style={[
             styles.smallCard,
             {
               backgroundColor: colors.card,
-              borderColor: colors.border,
+              borderColor: colors.cardBorder,
             },
           ]}
         >
           <View style={styles.smallCardHeader}>
             <MaterialCommunityIcons
               name="check-circle-outline"
-              size={18}
+              size={17}
               color={colors.success}
             />
             <Text style={[styles.smallCardLabel, { color: colors.textSecondary }]}>
@@ -105,7 +103,7 @@ export const StreakCard: React.FC<StreakCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 16,
-    marginVertical: 8,
+    marginVertical: 4,
     gap: 10,
   },
   mainCard: {
@@ -119,21 +117,21 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   fireEmoji: {
-    fontSize: 32,
+    fontSize: 28,
   },
   streakTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   streakNumber: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 2,
   },
   streakSub: {
-    fontSize: 13,
+    fontSize: 12.5,
     marginTop: 8,
   },
   statsRow: {
@@ -157,7 +155,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   smallCardValue: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
   },
 });

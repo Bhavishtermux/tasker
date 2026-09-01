@@ -21,18 +21,10 @@ import { DateSelector } from '../../src/components/DateSelector';
 import { TimeSelector } from '../../src/components/TimeSelector';
 import { ReminderSelector } from '../../src/components/ReminderSelector';
 import { RepeatSelector } from '../../src/components/RepeatSelector';
-import { CategorySelector } from '../../src/components/CategorySelector';
 import { PrioritySelector } from '../../src/components/PrioritySelector';
 import { SubtaskList } from '../../src/components/SubtaskList';
 import { getTodayDateString } from '../../src/utils/dateUtils';
-import { Priority, ReminderRule, RepeatRule, Subtask, TimeOfDay } from '../../src/types/task';
-
-const DURATION_PRESETS = [15, 25, 30, 45, 50, 60];
-const TIME_OF_DAY_OPTIONS: { type: TimeOfDay; label: string; icon: string }[] = [
-  { type: 'morning', label: 'Morning', icon: 'weather-sunset-up' },
-  { type: 'afternoon', label: 'Afternoon', icon: 'white-balance-sunny' },
-  { type: 'evening', label: 'Evening', icon: 'weather-night' },
-];
+import { Priority, ReminderRule, RepeatRule, Subtask } from '../../src/types/task';
 
 export default function CreateTaskScreen() {
   const router = useRouter();
@@ -44,10 +36,7 @@ export default function CreateTaskScreen() {
   const [notes, setNotes] = useState('');
   const [dueDate, setDueDate] = useState(getTodayDateString());
   const [isAllDay, setIsAllDay] = useState(false);
-  const [dueTime, setDueTime] = useState('09:30');
-  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('morning');
-  const [estimatedMinutes, setEstimatedMinutes] = useState<number>(45);
-  const [category, setCategory] = useState(settings.defaultCategory || 'coinbase');
+  const [dueTime, setDueTime] = useState('18:00');
   const [priority, setPriority] = useState<Priority>(settings.defaultPriority || 'normal');
   const [reminder, setReminder] = useState<ReminderRule>({
     preset: settings.defaultReminderPreset || 'none',
@@ -98,9 +87,6 @@ export default function CreateTaskScreen() {
       dueDate,
       dueTime: isAllDay ? undefined : dueTime,
       isAllDay,
-      timeOfDay,
-      estimatedMinutes,
-      category,
       priority,
       reminder,
       repeat,
@@ -138,7 +124,7 @@ export default function CreateTaskScreen() {
             onPress={handleSave}
             activeOpacity={0.8}
           >
-            <Text style={[styles.saveButtonText, { color: isDark ? '#000000' : '#FFFFFF' }]}>
+            <Text style={[styles.saveButtonText, { color: colors.checkboxCheck }]}>
               Save
             </Text>
           </TouchableOpacity>
@@ -149,7 +135,7 @@ export default function CreateTaskScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Title input */}
+          {/* Title Input */}
           <View style={styles.fieldGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>
               Task Title <Text style={{ color: colors.danger }}>*</Text>
@@ -163,7 +149,7 @@ export default function CreateTaskScreen() {
                   borderColor: isTitleInvalid ? colors.danger : colors.cardBorder,
                 },
               ]}
-              placeholder="e.g. design user registration process"
+              placeholder="e.g. Buy groceries"
               placeholderTextColor={colors.textMuted}
               value={title}
               onChangeText={setTitle}
@@ -177,120 +163,7 @@ export default function CreateTaskScreen() {
             )}
           </View>
 
-          {/* Time of Day block selector */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>
-              Time of Day
-            </Text>
-            <View style={styles.timeOfDayRow}>
-              {TIME_OF_DAY_OPTIONS.map((tod) => {
-                const isSelected = timeOfDay === tod.type;
-                return (
-                  <TouchableOpacity
-                    key={tod.type}
-                    style={[
-                      styles.todButton,
-                      {
-                        backgroundColor: isSelected
-                          ? colors.primaryLight
-                          : colors.surfaceVariant,
-                        borderColor: isSelected
-                          ? colors.border
-                          : 'transparent',
-                      },
-                    ]}
-                    onPress={() => setTimeOfDay(tod.type)}
-                    activeOpacity={0.7}
-                  >
-                    <MaterialCommunityIcons
-                      name={tod.icon as any}
-                      size={16}
-                      color={isSelected ? colors.text : colors.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.todText,
-                        {
-                          color: isSelected ? colors.text : colors.textSecondary,
-                          fontWeight: isSelected ? '700' : '400',
-                        },
-                      ]}
-                    >
-                      {tod.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Estimated Duration selector */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>
-              Duration
-            </Text>
-            <View style={styles.durationRow}>
-              {DURATION_PRESETS.map((mins) => {
-                const isSelected = estimatedMinutes === mins;
-                return (
-                  <TouchableOpacity
-                    key={mins}
-                    style={[
-                      styles.durationChip,
-                      {
-                        backgroundColor: isSelected
-                          ? colors.primaryLight
-                          : colors.surfaceVariant,
-                        borderColor: isSelected ? colors.border : 'transparent',
-                      },
-                    ]}
-                    onPress={() => setEstimatedMinutes(mins)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.durationChipText,
-                        {
-                          color: isSelected ? colors.text : colors.textSecondary,
-                          fontWeight: isSelected ? '700' : '400',
-                        },
-                      ]}
-                    >
-                      {mins} min
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Category / Tag */}
-          <CategorySelector
-            selectedCategory={category}
-            onSelectCategory={setCategory}
-          />
-
-          {/* Date Selector */}
-          <DateSelector selectedDate={dueDate} onSelectDate={setDueDate} />
-
-          {/* Time Selector */}
-          <TimeSelector
-            isAllDay={isAllDay}
-            onToggleAllDay={setIsAllDay}
-            dueTime={dueTime}
-            onSelectTime={setDueTime}
-          />
-
-          {/* Priority */}
-          <PrioritySelector value={priority} onChange={setPriority} />
-
-          {/* Reminder Selector */}
-          <ReminderSelector value={reminder} onChange={setReminder} />
-
-          {/* Repeat Selector */}
-          <RepeatSelector value={repeat} onChange={setRepeat} />
-
-          {/* Notes input */}
+          {/* Notes Input */}
           <View style={styles.fieldGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>
               Notes
@@ -313,6 +186,26 @@ export default function CreateTaskScreen() {
               textAlignVertical="top"
             />
           </View>
+
+          {/* Date Selector */}
+          <DateSelector selectedDate={dueDate} onSelectDate={setDueDate} />
+
+          {/* Time Selector */}
+          <TimeSelector
+            isAllDay={isAllDay}
+            onToggleAllDay={setIsAllDay}
+            dueTime={dueTime}
+            onSelectTime={setDueTime}
+          />
+
+          {/* Priority Selector */}
+          <PrioritySelector value={priority} onChange={setPriority} />
+
+          {/* Reminder Selector */}
+          <ReminderSelector value={reminder} onChange={setReminder} />
+
+          {/* Repeat Selector */}
+          <RepeatSelector value={repeat} onChange={setRepeat} />
 
           {/* Subtasks */}
           <SubtaskList
@@ -385,42 +278,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
-    minHeight: 80,
+    minHeight: 70,
     borderWidth: 1,
   },
   errorText: {
     fontSize: 12,
     marginTop: 4,
-  },
-  timeOfDayRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  todButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 6,
-  },
-  todText: {
-    fontSize: 13,
-  },
-  durationRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  durationChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  durationChipText: {
-    fontSize: 13,
   },
 });
