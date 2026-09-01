@@ -1,0 +1,101 @@
+export interface ThemeColors {
+  primary: string;
+  primaryLight: string;
+  primaryDark: string;
+  accent: string;
+  background: string;
+  surface: string;
+  surfaceVariant: string;
+  card: string;
+  cardBorder: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  border: string;
+  divider: string;
+  success: string;
+  danger: string;
+  warning: string;
+  importantBadge: string;
+  importantText: string;
+  chipBackground: string;
+  chipText: string;
+  tabBarBackground: string;
+  tabBarActive: string;
+  tabBarInactive: string;
+  tabBarIndicator: string;
+  checkboxBorder: string;
+  checkboxCheck: string;
+  dockBackground: string;
+  dockBorder: string;
+  badgeBackground: string;
+  badgeText: string;
+}
+
+export const lightTheme: ThemeColors = {
+  primary: '#18181B',
+  primaryLight: '#F4F4F5',
+  primaryDark: '#09090B',
+  accent: '#3B82F6',
+  background: '#F8F9FA',
+  surface: '#FFFFFF',
+  surfaceVariant: '#F1F3F4',
+  card: '#FFFFFF',
+  cardBorder: '#E4E4E7',
+  text: '#18181B',
+  textSecondary: '#71717A',
+  textMuted: '#A1A1AA',
+  border: '#E4E4E7',
+  divider: '#E4E4E7',
+  success: '#10B981',
+  danger: '#EF4444',
+  warning: '#F59E0B',
+  importantBadge: '#FEE2E2',
+  importantText: '#DC2626',
+  chipBackground: '#F4F4F5',
+  chipText: '#18181B',
+  tabBarBackground: '#FFFFFF',
+  tabBarActive: '#18181B',
+  tabBarInactive: '#71717A',
+  tabBarIndicator: '#E4E4E7',
+  checkboxBorder: '#A1A1AA',
+  checkboxCheck: '#FFFFFF',
+  dockBackground: '#FFFFFF',
+  dockBorder: '#E4E4E7',
+  badgeBackground: '#F4F4F5',
+  badgeText: '#71717A',
+};
+
+export const darkTheme: ThemeColors = {
+  primary: '#FFFFFF',
+  primaryLight: '#27272A',
+  primaryDark: '#E4E4E7',
+  accent: '#60A5FA',
+  background: '#0D0D10', // Deep luxury dark background from UI reference
+  surface: '#16161A',
+  surfaceVariant: '#202024',
+  card: '#18181C',
+  cardBorder: '#26262B',
+  text: '#F4F4F5',
+  textSecondary: '#9E9EA7',
+  textMuted: '#63636E',
+  border: '#26262B',
+  divider: '#222226',
+  success: '#34D399',
+  danger: '#F87171',
+  warning: '#FBBF24',
+  importantBadge: '#3B1818',
+  importantText: '#F87171',
+  chipBackground: '#202024',
+  chipText: '#E4E4E7',
+  tabBarBackground: '#121215',
+  tabBarActive: '#FFFFFF',
+  tabBarInactive: '#71717A',
+  tabBarIndicator: '#27272A',
+  checkboxBorder: '#4C4C55',
+  checkboxCheck: '#0D0D10',
+  dockBackground: '#1C1C22',
+  dockBorder: '#2E2E36',
+  badgeBackground: '#222228',
+  badgeText: '#9E9EA7',
+};
